@@ -1,3 +1,65 @@
+import {ChangeDetectionStrategy, Component, signal} from '@angular/core';
+import {form, FormField} from '@angular/forms/signals';
+interface LoginData {
+  email: string;
+  password: string;
+}
+@Component({
+  selector: 'app-root',
+  templateUrl: 'app.html',
+  styleUrl: 'app.css',
+  imports: [FormField],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class App {
+  loginModel = signal<LoginData>({
+    email: '',
+    password: '',
+  });
+  loginForm = form(this.loginModel);
+}
+
+
+
+
+
+
+
+
+<!-- Date and time - stores as ISO format strings -->
+<input type="date" [formField]="form.eventDate" />
+<input type="time" [formField]="form.eventTime" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <!-- Single checkbox -->
+<label>
+  <input type="checkbox" [formField]="form.agreeToTerms" />
+  I agree to the terms
+</label>
+
+
+
+
+
+
+
+
+
+
+
 import {
   ChangeDetectionStrategy,
   Component,
