@@ -23,6 +23,19 @@ export interface BaseFinancialDriversModel {
   liquidityRisk: LiquidityRisk | null;
 }
 
+
+
+export interface ConstructionFinancialDriversModel
+  extends BaseFinancialDriversModel {
+  scenario: 'CONSTRUCTION';
+
+  seniorGrossFinancialDebt: number | null;
+  juniorMezzanineGrossFinancialDebt: number | null;
+  equity: number | null;
+  quasiEquity: number | null;
+
+  debtToEquity: number | null; // computed
+}
 export interface AmortizingFinancialDriversModel
   extends BaseFinancialDriversModel {
   scenario: 'AMORTIZING';
