@@ -1,4 +1,14 @@
-import { Component, input } from '@angular/core';
+<bnpp-workflow-input
+  class="w-100"
+  [formControl]="$any(getControl(field.key))"
+  [formFieldLabel]="field.placeholder"
+  [placeholderKey]="field.placeholder"
+  [inputType]="'number'"
+></bnpp-workflow-input>
+
+
+
+    import { Component, input } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MaterialModule } from '../../../material.module';
 
@@ -16,72 +26,28 @@ export class WorkflowInputComponent {
   readonly inputType = input<string>('text');
 
   protected onInput(event: Event): void {
+    if (this.inputType() !== 'number') {
+      return;
+    }
+
     const input = event.target as HTMLInputElement;
     const rawValue = input.value;
 
     const value =
-      this.inputType() === 'number'
-        ? rawValue === ''
+      rawValue === ''
+        ? null
+        : Number.isNaN(input.valueAsNumber)
           ? null
-          : input.valueAsNumber
-        : rawValue;
+          : input.valueAsNumber;
 
-    console.log('[WorkflowInputComponent] rawValue =', rawValue, typeof rawValue);
-    console.log('[WorkflowInputComponent] parsedValue =', value, typeof value);
-
-    this.formControl().setValue(value);
+    this.formControl().setValue(value, { emitEvent: false });
     this.formControl().markAsDirty();
+    this.formControl().updateValueAndValidity({ emitEvent: false });
   }
 
   protected onBlur(): void {
     this.formControl().markAsTouched();
-  }
-
-  protected displayValue(): string | number | null {
-    const value = this.formControl().value;
-
-    if (value === null || value === undefined) {
-      return '';
-    }
-
-    return value;
+    this.formControl().updateValueAndValidity({ emitEvent: false });
   }
 }
-
-
-
-<mat-form-field class="w-100 workflow-input-field" appearance="outline">
-  <mat-label>{{ formFieldLabel() }}</mat-label>
-
-  <input
-    matInput
-    [type]="inputType() === 'number' ? 'number' : 'text'"
-    [min]="inputType() === 'number' ? 1 : null"
-    [value]="displayValue()"
-    [placeholder]="placeholderKey()"
-    [disabled]="formControl().disabled"
-    (input)="onInput($event)"
-    (blur)="onBlur()"
-  />
-</mat-form-field>
-
-
-
-
-      protected onInput(event: Event): void {
-  const input = event.target as HTMLInputElement;
-  const rawValue = input.value;
-
-  const value =
-    this.inputType() === 'number'
-      ? rawValue === ''
-        ? null
-        : Number.isNaN(input.valueAsNumber)
-          ? null
-          : input.valueAsNumber
-      : rawValue;
-
-  this.formControl().setValue(value);
-  this.formControl().markAsDirty();
-  this.formControl().updateValueAndValidity();
-}
+    
