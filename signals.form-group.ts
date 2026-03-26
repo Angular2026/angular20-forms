@@ -1,10 +1,20 @@
-<bnpp-workflow-input
-  class="w-100"
-  [formControl]="$any(getControl(field.key))"
-  [formFieldLabel]="field.placeholder"
-  [placeholderKey]="field.placeholder"
-  [inputType]="'number'"
-></bnpp-workflow-input>
+<mat-form-field class="w-100 workflow-input-field" appearance="outline">
+  <mat-label>{{ formFieldLabel() }}</mat-label>
+
+  <input
+    matInput
+    [formControl]="formControl()"
+    [type]="inputType() === 'number' ? 'number' : 'text'"
+    [min]="inputType() === 'number' ? 1 : null"
+    [placeholder]="placeholderKey()"
+    (input)="onInput($event)"
+    (blur)="onBlur()"
+  />
+
+  @if (formControl().touched && formControl().hasError('required')) {
+    <mat-error>{{ formFieldLabel() }} is required</mat-error>
+  }
+</mat-form-field>
 
 
 
