@@ -1,202 +1,92 @@
-export type ProjectPhase = 'CONSTRUCTION' | 'EARLY_OPERATION' | 'OPERATION';
-export type TransactionType = 'AMORTIZING' | 'BULLET';
+intrinsicRatingProposedCtrl = computed(
+  () => this.ratingForm().get('intrinsicRatingCodeProposed') as FormControl<string | null>
+);
 
-export type FinancialDriversScenario =
-  | 'CONSTRUCTION'
-  | 'AMORTIZING'
-  | 'BULLET';
+supportDirectionCtrl = computed(
+  () => this.ratingForm().get('supportDirection') as FormControl<string | null>
+);
 
-export type LiquidityRisk = 'EXCELLENT' | 'GOOD' | 'LIMITED';
-export type FinancialDriverUnit = 'thousand' | 'million' | 'billion' | 'trillion';
+supportStrengthCtrl = computed(
+  () => this.ratingForm().get('supportStrength') as FormControl<string | null>
+);
 
+intrinsicRatingProposedValue = signal<string | null>(null);
+supportDirectionValue = signal<string | null>(null);
+supportStrengthValue = signal<string | null>(null);
 
-export interface BaseFinancialDriversModel {
-  scenario: FinancialDriversScenario;
-  closingDate: string | null; // ISO date
-  liquidityRisk: LiquidityRisk | null;
-}
+readonly isBr04AutoFill = computed(() => {
+  const supportDirection = this.supportDirectionValue();
+  const supportStrength = this.supportStrengthValue();
 
+  const isNegativeWeak =
+    supportDirection === 'Negative' && supportStrength === 'Weak';
 
-export interface BaseFinancialDriversModel {
-  scenario: FinancialDriversScenario;
-  closingDate: string | null; // ISO date
-  liquidityRisk: LiquidityRisk | null;
-}
+  const isPositiveUndeterminedOrWeak =
+    supportDirection === 'Positive' &&
+    (supportStrength === 'Undetermined' || supportStrength === 'Weak');
 
+  const hasNoSupportEffect = !supportDirection && !supportStrength;
 
+  return isNegativeWeak || isPositiveUndeterminedOrWeak || hasNoSupportEffect;
+});
 
-export interface ConstructionFinancialDriversModel
-  extends BaseFinancialDriversModel {
-  scenario: 'CONSTRUCTION';
+readonly br04SyncRatingValueEffect = effect(() => {
+  const ratingProposedCtrl = this.ratingProposedCtrl();
+  const intrinsicRatingValue = this.intrinsicRatingProposedValue();
+  const isBr04AutoFill = this.isBr04AutoFill();
 
-  seniorGrossFinancialDebt: number | null;
-  juniorMezzanineGrossFinancialDebt: number | null;
-  equity: number | null;
-  quasiEquity: number | null;
+  if (isBr04AutoFill && ratingProposedCtrl.value !== intrinsicRatingValue) {
+    ratingProposedCtrl.setValue(intrinsicRatingValue, { emitEvent: false });
+  }
+});
 
-  debtToEquity: number | null; // computed
-}
-export interface AmortizingFinancialDriversModel
-  extends BaseFinancialDriversModel {
-  scenario: 'AMORTIZING';
+readonly br04ReadonlyEffect = effect(() => {
+  const ratingProposedCtrl = this.ratingProposedCtrl();
+  const isBr04AutoFill = this.isBr04AutoFill();
 
-  unit: FinancialDriverUnit | null;
-  currency: string | null;
-
-  seniorGrossFinancialDebt: number | null;
-  juniorMezzanineGrossFinancialDebt: number | null;
-  equity: number | null;
-  quasiEquity: number | null;
-  cfads: number | null;
-  principalPaid: number | null;
-  interestExpenses: number | null;
-
-  debtToEquity: number | null; // computed
-  dscr: number | null; // computed
-
-  adjustedDebtToEquity: number | null;
-  adjustedDebtToEquityClosingDate: string | null;
-  adjustedDebtToEquityComment: string | null;
-
-  adjustedDscrIcr: number | null;
-  adjustedDscrIcrClosingDate: string | null;
-  adjustedDscrIcrComment: string | null;
-}
-
-
-
-export interface ConstructionFinancialDriversFormValue {
-  closingDate: Date | null;
-  seniorGrossFinancialDebt: number | null;
-  juniorMezzanineGrossFinancialDebt: number | null;
-  equity: number | null;
-  quasiEquity: number | null;
-  liquidityRisk: LiquidityRisk | null;
-}
-
-
-
-
-
-export interface AmortizingFinancialDriversFormValue {
-  unit: FinancialDriverUnit | null;
-  currency: string | null;
-  closingDate: Date | null;
-
-  seniorGrossFinancialDebt: number | null;
-  juniorMezzanineGrossFinancialDebt: number | null;
-  equity: number | null;
-  quasiEquity: number | null;
-  cfads: number | null;
-  principalPaid: number | null;
-  interestExpenses: number | null;
-
-  adjustedDebtToEquity: number | null;
-  adjustedDebtToEquityClosingDate: Date | null;
-  adjustedDebtToEquityComment: string | null;
-
-  adjustedDscrIcr: number | null;
-  adjustedDscrIcrClosingDate: Date | null;
-  adjustedDscrIcrComment: string | null;
-
-  liquidityRisk: LiquidityRisk | null;
-}
-
-
-
-
-export interface ConstructionFinancialDriversPayload {
-  scenario: 'CONSTRUCTION';
-  closingDate: string | null;
-  seniorGrossFinancialDebt: number | null;
-  juniorMezzanineGrossFinancialDebt: number | null;
-  equity: number | null;
-  quasiEquity: number | null;
-  liquidityRisk: LiquidityRisk | null;
-}
-
-
-export interface AmortizingFinancialDriversPayload {
-  scenario: 'AMORTIZING';
-  unit: FinancialDriverUnit | null;
-  currency: string | null;
-  closingDate: string | null;
-
-  seniorGrossFinancialDebt: number | null;
-  juniorMezzanineGrossFinancialDebt: number | null;
-  equity: number | null;
-  quasiEquity: number | null;
-  cfads: number | null;
-  principalPaid: number | null;
-  interestExpenses: number | null;
-
-  adjustedDebtToEquity: number | null;
-  adjustedDebtToEquityClosingDate: string | null;
-  adjustedDebtToEquityComment: string | null;
-
-  adjustedDscrIcr: number | null;
-  adjustedDscrIcrClosingDate: string | null;
-  adjustedDscrIcrComment: string | null;
-
-  liquidityRisk: LiquidityRisk | null;
-}
-
-
-export class FinancialDriversMapper {
-  static toConstructionPayload(
-    formValue: ConstructionFinancialDriversFormValue
-  ): ConstructionFinancialDriversPayload {
-    return {
-      scenario: 'CONSTRUCTION',
-      closingDate: this.toIsoDate(formValue.closingDate),
-      seniorGrossFinancialDebt: formValue.seniorGrossFinancialDebt,
-      juniorMezzanineGrossFinancialDebt: formValue.juniorMezzanineGrossFinancialDebt,
-      equity: formValue.equity,
-      quasiEquity: formValue.quasiEquity,
-      liquidityRisk: formValue.liquidityRisk,
-    };
+  if (isBr04AutoFill && ratingProposedCtrl.enabled) {
+    ratingProposedCtrl.disable({ emitEvent: false });
+  } else if (!isBr04AutoFill && ratingProposedCtrl.disabled) {
+    ratingProposedCtrl.enable({ emitEvent: false });
   }
 
-  static toAmortizingPayload(
-    formValue: AmortizingFinancialDriversFormValue
-  ): AmortizingFinancialDriversPayload {
-    return {
-      scenario: 'AMORTIZING',
-      unit: formValue.unit,
-      currency: formValue.currency,
-      closingDate: this.toIsoDate(formValue.closingDate),
-      seniorGrossFinancialDebt: formValue.seniorGrossFinancialDebt,
-      juniorMezzanineGrossFinancialDebt: formValue.juniorMezzanineGrossFinancialDebt,
-      equity: formValue.equity,
-      quasiEquity: formValue.quasiEquity,
-      cfads: formValue.cfads,
-      principalPaid: formValue.principalPaid,
-      interestExpenses: formValue.interestExpenses,
-      adjustedDebtToEquity: formValue.adjustedDebtToEquity,
-      adjustedDebtToEquityClosingDate: this.toIsoDate(
-        formValue.adjustedDebtToEquityClosingDate
-      ),
-      adjustedDebtToEquityComment: formValue.adjustedDebtToEquityComment,
-      adjustedDscrIcr: formValue.adjustedDscrIcr,
-      adjustedDscrIcrClosingDate: this.toIsoDate(
-        formValue.adjustedDscrIcrClosingDate
-      ),
-      adjustedDscrIcrComment: formValue.adjustedDscrIcrComment,
-      liquidityRisk: formValue.liquidityRisk,
-    };
-  }
+  ratingProposedCtrl.updateValueAndValidity({ emitEvent: false });
+});
 
-  private static toIsoDate(value: Date | null): string | null {
-    if (!value) {
-      return null;
-    }
+ngOnInit(): void {
+  this.ratingProposedCtrl().valueChanges
+    .pipe(
+      startWith(this.ratingProposedCtrl().value),
+      takeUntilDestroyed(this.destroyRef$),
+    )
+    .subscribe(value => {
+      this.ratingProposedValue.set(value);
+    });
 
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return null;
-    }
+  this.intrinsicRatingProposedCtrl().valueChanges
+    .pipe(
+      startWith(this.intrinsicRatingProposedCtrl().value),
+      takeUntilDestroyed(this.destroyRef$),
+    )
+    .subscribe(value => {
+      this.intrinsicRatingProposedValue.set(value);
+    });
 
-    return date.toISOString().slice(0, 10);
-  }
+  this.supportDirectionCtrl().valueChanges
+    .pipe(
+      startWith(this.supportDirectionCtrl().value),
+      takeUntilDestroyed(this.destroyRef$),
+    )
+    .subscribe(value => {
+      this.supportDirectionValue.set(value);
+    });
+
+  this.supportStrengthCtrl().valueChanges
+    .pipe(
+      startWith(this.supportStrengthCtrl().value),
+      takeUntilDestroyed(this.destroyRef$),
+    )
+    .subscribe(value => {
+      this.supportStrengthValue.set(value);
+    });
 }
-
