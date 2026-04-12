@@ -1,92 +1,68 @@
-intrinsicRatingProposedCtrl = computed(
-  () => this.ratingForm().get('intrinsicRatingCodeProposed') as FormControl<string | null>
-);
+readonly hasBr05Error = computed(() => {
+  const isAutoFill = this.isRatingProposedAutoFill();
+  const comment = (this.commentCtrl().value ?? '').trim();
+  const ratingProposed = this.ratingProposedCtrl().value;
 
-supportDirectionCtrl = computed(
-  () => this.ratingForm().get('supportDirection') as FormControl<string | null>
-);
-
-supportStrengthCtrl = computed(
-  () => this.ratingForm().get('supportStrength') as FormControl<string | null>
-);
-
-intrinsicRatingProposedValue = signal<string | null>(null);
-supportDirectionValue = signal<string | null>(null);
-supportStrengthValue = signal<string | null>(null);
-
-readonly isBr04AutoFill = computed(() => {
-  const supportDirection = this.supportDirectionValue();
-  const supportStrength = this.supportStrengthValue();
-
-  const isNegativeWeak =
-    supportDirection === 'Negative' && supportStrength === 'Weak';
-
-  const isPositiveUndeterminedOrWeak =
-    supportDirection === 'Positive' &&
-    (supportStrength === 'Undetermined' || supportStrength === 'Weak');
-
-  const hasNoSupportEffect = !supportDirection && !supportStrength;
-
-  return isNegativeWeak || isPositiveUndeterminedOrWeak || hasNoSupportEffect;
+  return !!ratingProposed && !isAutoFill && !comment;
 });
 
-readonly br04SyncRatingValueEffect = effect(() => {
-  const ratingProposedCtrl = this.ratingProposedCtrl();
-  const intrinsicRatingValue = this.intrinsicRatingProposedValue();
-  const isBr04AutoFill = this.isBr04AutoFill();
+readonly counterpartyRatingValidatorEffect = effect(() => {
+  const ratingCtrl = this.ratingProposedCtrl();
+  const hasError = this.hasBr05Error();
 
-  if (isBr04AutoFill && ratingProposedCtrl.value !== intrinsicRatingValue) {
-    ratingProposedCtrl.setValue(intrinsicRatingValue, { emitEvent: false });
+  const errors = ratingCtrl.errors ?? {};
+
+  if (hasError) {
+    ratingCtrl.setErrors({
+      ...errors,
+      counterpartyRatingCommentRequired: true,
+    });
+  } else {
+    if (errors['counterpartyRatingCommentRequired']) {
+      const { counterpartyRatingCommentRequired, ...rest } = errors;
+      ratingCtrl.setErrors(Object.keys(rest).length ? rest : null);
+    }
   }
 });
 
-readonly br04ReadonlyEffect = effect(() => {
-  const ratingProposedCtrl = this.ratingProposedCtrl();
-  const isBr04AutoFill = this.isBr04AutoFill();
+readonly hasBr06Warning = computed(() => {
+  const ratingProposed = this.ratingProposedCtrl().value;
+  const comment = (this.commentCtrl().value ?? '').trim();
 
-  if (isBr04AutoFill && ratingProposedCtrl.enabled) {
-    ratingProposedCtrl.disable({ emitEvent: false });
-  } else if (!isBr04AutoFill && ratingProposedCtrl.disabled) {
-    ratingProposedCtrl.enable({ emitEvent: false });
-  }
-
-  ratingProposedCtrl.updateValueAndValidity({ emitEvent: false });
+  return !!ratingProposed && !this.isRatingProposedAutoFill() && !!comment;
 });
 
-ngOnInit(): void {
-  this.ratingProposedCtrl().valueChanges
-    .pipe(
-      startWith(this.ratingProposedCtrl().value),
-      takeUntilDestroyed(this.destroyRef$),
-    )
-    .subscribe(value => {
-      this.ratingProposedValue.set(value);
-    });
+readonly counterpartyRatingWarningEffect = effect(() => {
+  const validationTriggered = this.validationInProgress();
 
-  this.intrinsicRatingProposedCtrl().valueChanges
-    .pipe(
-      startWith(this.intrinsicRatingProposedCtrl().value),
-      takeUntilDestroyed(this.destroyRef$),
-    )
-    .subscribe(value => {
-      this.intrinsicRatingProposedValue.set(value);
-    });
+  if (!validationTriggered) {
+    this.clearCounterpartyRatingWarnings();
+    return;
+  }
 
-  this.supportDirectionCtrl().valueChanges
-    .pipe(
-      startWith(this.supportDirectionCtrl().value),
-      takeUntilDestroyed(this.destroyRef$),
-    )
-    .subscribe(value => {
-      this.supportDirectionValue.set(value);
-    });
+  this.clearCounterpartyRatingWarnings();
+  this.updateCounterpartyRatingWarnings();
+});
 
-  this.supportStrengthCtrl().valueChanges
-    .pipe(
-      startWith(this.supportStrengthCtrl().value),
-      takeUntilDestroyed(this.destroyRef$),
-    )
-    .subscribe(value => {
-      this.supportStrengthValue.set(value);
+private updateCounterpartyRatingWarnings(): void {
+  const alerts: IAlert[] = [];
+
+  if (this.hasBr06Warning()) {
+    alerts.push({
+      alertTextId: '@@counterpartyRatingConsistencyWarningTopPage',
+      fragmentId: 'pgnnrCounterpartyRating',
+      anchorId: 'counterpartyRatingProposed',
     });
+  }
+
+  if (alerts.length) {
+    this.workflowValidationService.addWorkflowAlerts('warnings', alerts);
+  }
+}
+
+private clearCounterpartyRatingWarnings(): void {
+  this.workflowValidationService.clearAlertsByFragmentId(
+    'warnings',
+    'pgnnrCounterpartyRating',
+  );
 }
