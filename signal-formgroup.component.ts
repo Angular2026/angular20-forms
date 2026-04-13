@@ -1,1515 +1,712 @@
-import {ChangeDetectionStrategy, Component, signal} from '@angular/core';
-import {form, FormField} from '@angular/forms/signals';
-interface LoginData {
-  email: string;
-  password: string;
-}
-@Component({
-  selector: 'app-root',
-  templateUrl: 'app.html',
-  styleUrl: 'app.css',
-  imports: [FormField],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-})
-export class App {
-  loginModel = signal<LoginData>({
-    email: '',
-    password: '',
-  });
-  loginForm = form(this.loginModel);
-}
-
-
-
-
-
-
-
-
-<!-- Date and time - stores as ISO format strings -->
-<input type="date" [formField]="form.eventDate" />
-<input type="time" [formField]="form.eventTime" />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  <!-- Single checkbox -->
-<label>
-  <input type="checkbox" [formField]="form.agreeToTerms" />
-  I agree to the terms
-</label>
-
-
-
-
-
-
-
-
-
-
-
 import {
-  ChangeDetectionStrategy,
   Component,
+  OnInit,
   computed,
-  input,
-} from '@angular/core';
-import { FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { MaterialModule } from '@shared/modules/MaterialModule';
-
-// À adapter à ton repo
-import { WorkflowDocument } from '@core/models/workflow-document.model';
-import { FinancialDriversConstructionComponent } from './financial-drivers-construction.component';
-import { FinancialDriversAmortizingComponent } from './financial-drivers-amortizing.component';
-
-type ProjectPhase = 'CONSTRUCTION' | 'EARLY_OPERATION' | 'OPERATION' | null;
-type TransactionType = 'AMORTIZING' | 'BULLET' | null;
-
-@Component({
-  selector: 'bnpp-financial-drivers',
-  standalone: true,
-  imports: [
-    MaterialModule,
-    ReactiveFormsModule,
-    FinancialDriversConstructionComponent,
-    FinancialDriversAmortizingComponent,
-  ],
-  templateUrl: './financial-drivers.component.html',
-  styleUrls: ['./financial-drivers.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-})
-export class FinancialDriversComponent {
-  ratingForm = input.required<FormGroup>();
-  workflowDTO = input.required<WorkflowDocument>();
-  validationInProgress = input<boolean>(false);
-
-  readonly projectPhase = computed<ProjectPhase>(() => {
-    return this.ratingForm().get('projectPhase.projectPhase')?.value ?? null;
-  });
-
-  readonly transactionType = computed<TransactionType>(() => {
-    return this.ratingForm().get('projectPhase.transactionType')?.value ?? null;
-  });
-
-  readonly showConstruction = computed(() => {
-    return this.projectPhase() === 'CONSTRUCTION';
-  });
-
-  readonly showAmortizing = computed(() => {
-    const phase = this.projectPhase();
-    const transactionType = this.transactionType();
-
-    return (
-      (phase === 'EARLY_OPERATION' || phase === 'OPERATION') &&
-      transactionType === 'AMORTIZING'
-    );
-  });
-}
-
-
-
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  input,
-} from '@angular/core';
-import { FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { MaterialModule } from '@shared/modules/MaterialModule';
-
-// À adapter à ton repo
-import { WorkflowDocument } from '@core/models/workflow-document.model';
-import { FinancialDriversConstructionComponent } from './financial-drivers-construction.component';
-import { FinancialDriversAmortizingComponent } from './financial-drivers-amortizing.component';
-
-type ProjectPhase = 'CONSTRUCTION' | 'EARLY_OPERATION' | 'OPERATION' | null;
-type TransactionType = 'AMORTIZING' | 'BULLET' | null;
-
-@Component({
-  selector: 'bnpp-financial-drivers',
-  standalone: true,
-  imports: [
-    MaterialModule,
-    ReactiveFormsModule,
-    FinancialDriversConstructionComponent,
-    FinancialDriversAmortizingComponent,
-  ],
-  templateUrl: './financial-drivers.component.html',
-  styleUrls: ['./financial-drivers.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-})
-export class FinancialDriversComponent {
-  ratingForm = input.required<FormGroup>();
-  workflowDTO = input.required<WorkflowDocument>();
-  validationInProgress = input<boolean>(false);
-
-  readonly projectPhase = computed<ProjectPhase>(() => {
-    return this.ratingForm().get('projectPhase.projectPhase')?.value ?? null;
-  });
-
-  readonly transactionType = computed<TransactionType>(() => {
-    return this.ratingForm().get('projectPhase.transactionType')?.value ?? null;
-  });
-
-  readonly showConstruction = computed(() => {
-    return this.projectPhase() === 'CONSTRUCTION';
-  });
-
-  readonly showAmortizing = computed(() => {
-    const phase = this.projectPhase();
-    const transactionType = this.transactionType();
-
-    return (
-      (phase === 'EARLY_OPERATION' || phase === 'OPERATION') &&
-      transactionType === 'AMORTIZING'
-    );
-  });
-}
-
-
-/////
-
-@if (showConstruction()) {
-  <bnpp-financial-drivers-construction
-    [ratingForm]="ratingForm()"
-    [workflowDTO]="workflowDTO()"
-    [validationInProgress]="validationInProgress()"
-  />
-}
-
-@if (showAmortizing()) {
-  <bnpp-financial-drivers-amortizing
-    [ratingForm]="ratingForm()"
-    [workflowDTO]="workflowDTO()"
-    [validationInProgress]="validationInProgress()"
-  />
-}
-
-
-////
-
-export const FINANCIAL_DRIVERS_ALERT_KEYS = {
-  unitRequired: 'financialDriversUnitRequired',
-  currencyRequired: 'financialDriversCurrencyRequired',
-  closingDateRequired: 'financialDriversClosingDateRequired',
-  closingDate21Months: 'financialDriversClosingDate21Months',
-
-  principalPaidPositive: 'financialDriversPrincipalPaidPositive',
-  interestExpensesPositive: 'financialDriversInterestExpensesPositive',
-
-  adjustedDebtToEquityClosingDateRequired:
-    'financialDriversAdjustedDebtToEquityClosingDateRequired',
-  adjustedDebtToEquityCommentRequired:
-    'financialDriversAdjustedDebtToEquityCommentRequired',
-  adjustedDebtToEquity21Months: 'financialDriversAdjustedDebtToEquity21Months',
-
-  adjustedDscrIcrClosingDateRequired:
-    'financialDriversAdjustedDscrIcrClosingDateRequired',
-  adjustedDscrIcrCommentRequired:
-    'financialDriversAdjustedDscrIcrCommentRequired',
-  adjustedDscrIcr21Months: 'financialDriversAdjustedDscrIcr21Months',
-} as const;
-
-
-
-////
-
-
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  computed,
+  effect,
   inject,
-  input,
-} from '@angular/core';
-import {
-  AbstractControl,
-  FormBuilder,
-  FormGroup,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-} from '@angular/forms';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { startWith } from 'rxjs';
-
-import { MaterialModule } from '@shared/modules/MaterialModule';
-import { WorkflowDocument } from '@core/models/workflow-document.model';
-import { FINANCIAL_DRIVERS_ALERT_KEYS } from './financial-drivers-alerts.constants';
-
-type NullableNumber = number | null;
-type LiquidityRisk = 'EXCELLENT' | 'GOOD' | 'LIMITED';
-
-@Component({
-  selector: 'bnpp-financial-drivers-construction',
-  standalone: true,
-  imports: [MaterialModule, ReactiveFormsModule],
-  templateUrl: './financial-drivers-construction.component.html',
-  styleUrls: ['./financial-drivers.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
-})
-export class FinancialDriversConstructionComponent {
-  private readonly formBuilder = inject(FormBuilder);
-  private readonly destroyRef = inject(DestroyRef);
-
-  ratingForm = input.required<FormGroup>();
-  workflowDTO = input.required<WorkflowDocument>();
-  validationInProgress = input<boolean>(false);
-
-  readonly constructionForm = this.formBuilder.group(
-    {
-      closingDate: this.formBuilder.control<Date | null>(null),
-      seniorGrossFinancialDebt: this.formBuilder.control<NullableNumber>(null),
-      juniorMezzanineGrossFinancialDebt: this.formBuilder.control<NullableNumber>(null),
-      equity: this.formBuilder.control<NullableNumber>(null),
-      quasiEquity: this.formBuilder.control<NullableNumber>(null),
-      liquidityRisk: this.formBuilder.control<LiquidityRisk | null>('GOOD'),
-    },
-    {
-      validators: [this.closingDate21MonthsValidator()],
-    }
-  );
-
-  private readonly formValue = toSignal(
-    this.constructionForm.valueChanges.pipe(startWith(this.constructionForm.getRawValue())),
-    { initialValue: this.constructionForm.getRawValue() }
-  );
-
-  readonly debtToEquityDisplay = computed(() => {
-    const value = this.formValue();
-
-    const seniorDebt = this.toNumber(value.seniorGrossFinancialDebt);
-    const juniorDebt = this.toNumber(value.juniorMezzanineGrossFinancialDebt);
-    const equity = this.toNumber(value.equity);
-    const quasiEquity = this.toNumber(value.quasiEquity);
-
-    const denominator = equity + quasiEquity;
-    if (denominator === 0) {
-      return '/';
-    }
-
-    return this.formatRatio((seniorDebt + juniorDebt) / denominator);
-  });
-
-  readonly liquidityRiskLabel = computed(() => {
-    const value = this.constructionForm.controls.liquidityRisk.value;
-
-    switch (value) {
-      case 'EXCELLENT':
-        return $localize`:@@financialDriversLiquidityRiskExcellentLabel:Excellent (> 12 mois de service de la dette)`;
-      case 'LIMITED':
-        return $localize`:@@financialDriversLiquidityRiskLimitedLabel:Limited (< 6 mois de service de la dette)`;
-      case 'GOOD':
-      default:
-        return $localize`:@@financialDriversLiquidityRiskGoodLabel:Good (6 - 12 mois de service de la dette)`;
-    }
-  });
-
-  constructor() {
-    this.registerFormInParent();
-    this.setupValidationRefresh();
-  }
-
-  onClosingDateChange(event: { value: Date | null }): void {
-    this.constructionForm.controls.closingDate.setValue(event.value);
-    this.constructionForm.controls.closingDate.markAsDirty();
-    this.constructionForm.controls.closingDate.updateValueAndValidity();
-  }
-
-  private registerFormInParent(): void {
-    this.ratingForm().setControl('financialDrivers', this.constructionForm);
-  }
-
-  private setupValidationRefresh(): void {
-    this.constructionForm.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.constructionForm.updateValueAndValidity({ emitEvent: false });
-      });
-  }
-
-  private closingDate21MonthsValidator(): ValidatorFn {
-    return (group: AbstractControl): ValidationErrors | null => {
-      const closingDateControl = group.get('closingDate');
-
-      if (!closingDateControl?.value) {
-        return null;
-      }
-
-      const inputDate = new Date(closingDateControl.value);
-      if (Number.isNaN(inputDate.getTime())) {
-        return null;
-      }
-
-      const today = new Date();
-      const limitDate = new Date(today);
-      limitDate.setMonth(today.getMonth() - 21);
-
-      this.setControlError(
-        closingDateControl,
-        FINANCIAL_DRIVERS_ALERT_KEYS.closingDate21Months,
-        inputDate < limitDate
-      );
-
-      return null;
-    };
-  }
-
-  private setControlError(
-    control: AbstractControl | null,
-    errorKey: string,
-    shouldSet: boolean
-  ): void {
-    if (!control) {
-      return;
-    }
-
-    const errors = { ...(control.errors ?? {}) };
-
-    if (shouldSet) {
-      errors[errorKey] = true;
-      control.setErrors(errors);
-      return;
-    }
-
-    delete errors[errorKey];
-    control.setErrors(Object.keys(errors).length ? errors : null);
-  }
-
-  private toNumber(value: unknown): number {
-    return typeof value === 'number' && !Number.isNaN(value) ? value : 0;
-  }
-
-  private formatRatio(value: number): string {
-    return Number.isFinite(value) ? value.toFixed(2) : '/';
-  }
-}
-
-
-
-///
-
-
-
-<mat-accordion class="accordion-container" multi hideToggle>
-  <mat-expansion-panel class="crf-expansion-panel" #panel [expanded]="true">
-    <mat-expansion-panel-header class="workflow-details-panel-header">
-      <mat-panel-title>
-        <div class="header-panel-container">
-          <span class="title-text" i18n="@@financialDriversTitle">Drivers financiers</span>
-          <mat-icon class="panel-expand-icon">
-            {{ panel.expanded ? 'remove' : 'add' }}
-          </mat-icon>
-        </div>
-      </mat-panel-title>
-    </mat-expansion-panel-header>
-
-    <div class="crf-mat-expansion-content">
-      <mat-card class="crf-mat-expansion-content-card">
-        <mat-card-content>
-          <form [formGroup]="constructionForm">
-            <div class="row-item fade-in">
-              <div class="row-label" i18n="@@financialDriversClosingDateLabel">
-                Date de clôture
-              </div>
-
-              <div class="row-content row-content-full">
-                <mat-form-field appearance="outline" class="w-100 date-field">
-                  <input
-                    matInput
-                    [matDatepicker]="closingDatePicker"
-                    [formControl]="constructionForm.controls.closingDate"
-                    (dateChange)="onClosingDateChange($event)"
-                    i18n-placeholder="@@financialDriversClosingDatePlaceholder"
-                    placeholder="Date de clôture"
-                  />
-                  <mat-datepicker-toggle
-                    matIconSuffix
-                    [for]="closingDatePicker"
-                  ></mat-datepicker-toggle>
-                  <mat-datepicker #closingDatePicker></mat-datepicker>
-                </mat-form-field>
-
-                @if (
-                  (constructionForm.controls.closingDate.touched || validationInProgress()) &&
-                  constructionForm.controls.closingDate.errors &&
-                  constructionForm.controls.closingDate.errors['financialDriversClosingDate21Months']
-                ) {
-                  <div class="field-error" i18n="@@fieldIncorrectLabel">
-                    Veuillez modifier votre saisie
-                  </div>
-                }
-              </div>
-            </div>
-
-            <div class="row-item fade-in">
-              <div class="row-label" i18n="@@financialDriversDebtToEquityConstructionLabel">
-                Dette sur Capitaux Propres %
-              </div>
-
-              <div class="row-content row-content-full">
-                <div class="data-container large-readonly-value">
-                  <span class="text-capitalize data-indicator">
-                    {{ debtToEquityDisplay() }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div class="row-item fade-in">
-              <div class="row-label" i18n="@@financialDriversDataLabel">
-                Data
-              </div>
-
-              <div class="row-content row-content-full">
-                <div class="data-container">
-                  <span class="data-text" i18n="@@financialDriversLiquidityRiskLabel">
-                    Risque de liquidité (LR)
-                  </span>
-                  <span class="text-capitalize data-indicator">
-                    {{ liquidityRiskLabel() }}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </form>
-        </mat-card-content>
-      </mat-card>
-    </div>
-  </mat-expansion-panel>
-</mat-accordion>
-
-
-
-                    /////
-
-
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  computed,
-  inject,
-  input,
   signal,
 } from '@angular/core';
-import {
-  AbstractControl,
-  FormBuilder,
-  FormControl,
-  FormGroup,
-  ReactiveFormsModule,
-  ValidationErrors,
-  ValidatorFn,
-} from '@angular/forms';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { FormBuilder, FormControl, Validators } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { startWith } from 'rxjs';
 
-import { MaterialModule } from '@shared/modules/MaterialModule';
-import { WorkflowDocument } from '@core/models/workflow-document.model';
-import { WorkflowInputComponent } from '@shared/components/workflow-input/workflow-input.component';
-import { WorkflowSelectListComponent } from '@shared/components/workflow-select-list/workflow-select-list.component';
-import { WorkflowAutocompleteComponent } from '@shared/components/workflow-autocomplete/workflow-autocomplete.component';
-import { FINANCIAL_DRIVERS_ALERT_KEYS } from './financial-drivers-alerts.constants';
+import { WorkflowService } from '...';
+import { LanguageService } from '...';
+import { WorkflowValidationService } from '...';
+import { IAlert } from '...';
 
-type NullableNumber = number | null;
-type NullableString = string | null;
-type FinancialDriverUnit = 'thousand' | 'million' | 'billion' | 'trillion';
-type LiquidityRisk = 'EXCELLENT' | 'GOOD' | 'LIMITED';
+type SupportDirection = 'POSITIVE' | 'NEGATIVE' | null;
+type SupportStrength =
+  | 'WEAK'
+  | 'UNDETERMINED'
+  | 'STRONG'
+  | 'VERY_STRONG'
+  | 'ABSOLUTE'
+  | null;
 
-type ManualFieldKey =
-  | 'seniorGrossFinancialDebt'
-  | 'juniorMezzanineGrossFinancialDebt'
-  | 'equity'
-  | 'quasiEquity'
-  | 'cfads'
-  | 'principalPaid'
-  | 'interestExpenses';
+type ValidationSeverity = 'error' | 'warning' | 'none';
+type ValidationTarget = 'rating' | 'comment' | 'none';
 
-interface IItemList {
-  label: string;
-  value: string;
-}
-
-interface ComboboxField {
-  label: string;
-  value: string;
-}
-
-interface ManualFieldConfig {
-  key: ManualFieldKey;
-  label: string;
-  placeholder: string;
-  positiveOnly?: boolean;
-  showInfoIcon?: boolean;
+interface RatingValidationResult {
+  severity: ValidationSeverity;
+  target: ValidationTarget;
+  code:
+    | 'supportConsistency'
+    | 'mrcCommentRequired'
+    | null;
 }
 
 @Component({
-  selector: 'bnpp-financial-drivers-amortizing',
-  standalone: true,
-  imports: [
-    MaterialModule,
-    ReactiveFormsModule,
-    WorkflowInputComponent,
-    WorkflowSelectListComponent,
-    WorkflowAutocompleteComponent,
-  ],
-  templateUrl: './financial-drivers-amortizing.component.html',
-  styleUrls: ['./financial-drivers.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-pgnnr-rating-block',
+  templateUrl: './pgnnr-rating-block.component.html',
 })
-export class FinancialDriversAmortizingComponent {
-  private readonly formBuilder = inject(FormBuilder);
-  private readonly destroyRef = inject(DestroyRef);
+export class PgnnrRatingBlockComponent implements OnInit {
+  workflowService = inject(WorkflowService);
+  languageService = inject(LanguageService);
+  private workflowValidationService = inject(WorkflowValidationService);
+  private formBuilder = inject(FormBuilder);
 
-  ratingForm = input.required<FormGroup>();
-  workflowDTO = input.required<WorkflowDocument>();
-  validationInProgress = input<boolean>(false);
+  // ---------------------------------
+  // Controls
+  // ---------------------------------
 
-  readonly amortizingForm = this.formBuilder.group(
-    {
-      unit: this.formBuilder.control<FinancialDriverUnit | null>(null),
-      currency: this.formBuilder.control<string | null>(null),
-      closingDate: this.formBuilder.control<Date | null>(null),
-
-      seniorGrossFinancialDebt: this.formBuilder.control<NullableNumber>(null),
-      juniorMezzanineGrossFinancialDebt: this.formBuilder.control<NullableNumber>(null),
-      equity: this.formBuilder.control<NullableNumber>(null),
-      quasiEquity: this.formBuilder.control<NullableNumber>(null),
-      cfads: this.formBuilder.control<NullableNumber>(null),
-      principalPaid: this.formBuilder.control<NullableNumber>(null),
-      interestExpenses: this.formBuilder.control<NullableNumber>(null),
-
-      adjustedDebtToEquity: this.formBuilder.control<NullableNumber>(null),
-      adjustedDebtToEquityClosingDate: this.formBuilder.control<Date | null>(null),
-      adjustedDebtToEquityComment: this.formBuilder.control<NullableString>(null),
-
-      adjustedDscrIcr: this.formBuilder.control<NullableNumber>(null),
-      adjustedDscrIcrClosingDate: this.formBuilder.control<Date | null>(null),
-      adjustedDscrIcrComment: this.formBuilder.control<NullableString>(null),
-
-      liquidityRisk: this.formBuilder.control<LiquidityRisk | null>('GOOD'),
-    },
-    {
-      validators: [
-        this.manualSectionRequiredValidator(),
-        this.adjustedDebtToEquityValidator(),
-        this.adjustedDscrIcrValidator(),
-      ],
-    }
+  readonly ratingProposedCtrl = computed(
+    () =>
+      this.ratingForm().get(
+        'pgnnrCounterpartyRatingDetails.counterpartyRatingProposed'
+      ) as FormControl<string | null>
   );
 
-  private readonly formValue = toSignal(
-    this.amortizingForm.valueChanges.pipe(startWith(this.amortizingForm.getRawValue())),
-    { initialValue: this.amortizingForm.getRawValue() }
+  readonly ratingDateCtrl = computed(
+    () =>
+      this.ratingForm().get(
+        'pgnnrCounterpartyRatingDetails.counterpartyRatingDate'
+      ) as FormControl<string | null>
   );
 
-  readonly manualFields = signal<ManualFieldConfig[]>([
-    {
-      key: 'seniorGrossFinancialDebt',
-      label: $localize`:@@financialDriversSeniorGrossFinancialDebtLabel:Dette Financière Brute Senior`,
-      placeholder: $localize`:@@financialDriversSeniorGrossFinancialDebtPlaceholder:Dette Financière Brute Senior`,
-      showInfoIcon: true,
-    },
-    {
-      key: 'juniorMezzanineGrossFinancialDebt',
-      label: $localize`:@@financialDriversJuniorMezzanineGrossFinancialDebtLabel:Dette Financière Brute Junior/Mezzanine`,
-      placeholder: $localize`:@@financialDriversJuniorMezzanineGrossFinancialDebtPlaceholder:Dette Financière Brute Junior/Mezzanine`,
-      showInfoIcon: true,
-    },
-    {
-      key: 'equity',
-      label: $localize`:@@financialDriversEquityLabel:Fonds Propres`,
-      placeholder: $localize`:@@financialDriversEquityPlaceholder:Fonds Propres`,
-      showInfoIcon: true,
-    },
-    {
-      key: 'quasiEquity',
-      label: $localize`:@@financialDriversQuasiEquityLabel:Quasi-fonds Propres`,
-      placeholder: $localize`:@@financialDriversQuasiEquityPlaceholder:Quasi-fonds Propres`,
-      showInfoIcon: true,
-    },
-    {
-      key: 'cfads',
-      label: $localize`:@@financialDriversCfadsLabel:Cash Flow Available for Debt Service (CFADS)`,
-      placeholder: $localize`:@@financialDriversCfadsPlaceholder:Cash Flow Available for Debt Service (CFADS)`,
-      showInfoIcon: true,
-    },
-    {
-      key: 'principalPaid',
-      label: $localize`:@@financialDriversPrincipalPaidLabel:Principal Paid`,
-      placeholder: $localize`:@@financialDriversPrincipalPaidPlaceholder:Principal Paid`,
-      positiveOnly: true,
-      showInfoIcon: true,
-    },
-    {
-      key: 'interestExpenses',
-      label: $localize`:@@financialDriversInterestExpensesLabel:Interest Expenses`,
-      placeholder: $localize`:@@financialDriversInterestExpensesPlaceholder:Interest Expenses`,
-      positiveOnly: true,
-      showInfoIcon: true,
-    },
-  ]);
+  readonly commentCtrl = computed(
+    () =>
+      this.ratingForm().get(
+        'pgnnrCounterpartyRatingDetails.counterpartyRatingComment'
+      ) as FormControl<string | null>
+  );
 
-  referenceCurrencyUnitList: IItemList[] = [
-    {
-      label: $localize`:@@currencyUnitsValueThousand:milles`,
-      value: 'thousand',
-    },
-    {
-      label: $localize`:@@currencyUnitsValueMillion:millions`,
-      value: 'million',
-    },
-    {
-      label: $localize`:@@currencyUnitsValueBillion:milliards`,
-      value: 'billion',
-    },
-    {
-      label: $localize`:@@currencyUnitsValueTrillion:billions`,
-      value: 'trillion',
-    },
-  ];
+  readonly intrinsicRatingProposedCtrl = computed(
+    () =>
+      this.ratingForm().get(
+        'intrinsicRatingCodeProposed'
+      ) as FormControl<string | null>
+  );
 
-  liquidityRiskOptions: IItemList[] = [
-    {
-      label: $localize`:@@financialDriversLiquidityRiskExcellentLabel:Excellent (> 12 mois de service de la dette)`,
-      value: 'EXCELLENT',
-    },
-    {
-      label: $localize`:@@financialDriversLiquidityRiskGoodLabel:Good (6 - 12 mois de service de la dette)`,
-      value: 'GOOD',
-    },
-    {
-      label: $localize`:@@financialDriversLiquidityRiskLimitedLabel:Limited (< 6 mois de service de la dette)`,
-      value: 'LIMITED',
-    },
-  ];
+  readonly supportDirectionCtrl = computed(
+    () =>
+      this.ratingForm().get(
+        'supportDirection'
+      ) as FormControl<SupportDirection>
+  );
 
-  currencyComboValues: ComboboxField[] = [];
-  currencyListWithAllData: ComboboxField[] = [];
+  readonly supportStrengthCtrl = computed(
+    () =>
+      this.ratingForm().get(
+        'supportStrength'
+      ) as FormControl<SupportStrength>
+  );
 
-  readonly debtToEquityDisplay = computed(() => {
-    const value = this.formValue();
+  readonly suggrCtrl = computed(
+    () =>
+      this.ratingForm().get(
+        'pgnnrCounterpartyRatingDetails.sugrrProposedByAnalyst'
+      ) as FormControl<number | null>
+  );
 
-    const seniorDebt = this.toNumber(value.seniorGrossFinancialDebt);
-    const juniorDebt = this.toNumber(value.juniorMezzanineGrossFinancialDebt);
-    const equity = this.toNumber(value.equity);
-    const quasiEquity = this.toNumber(value.quasiEquity);
+  readonly suggrCommentCtrl = computed(
+    () =>
+      this.ratingForm().get(
+        'pgnnrCounterpartyRatingDetails.sugrrComment'
+      ) as FormControl<string | null>
+  );
 
-    const denominator = equity + quasiEquity;
-    if (denominator === 0) {
-      return '/';
-    }
+  // ---------------------------------
+  // Signals
+  // ---------------------------------
 
-    return this.formatRatio((seniorDebt + juniorDebt) / denominator);
+  readonly intrinsicRatingProposedValue = signal<string | null>(null);
+  readonly supportDirectionValue = signal<SupportDirection>(null);
+  readonly supportStrengthValue = signal<SupportStrength>(null);
+  readonly ratingProposedValue = signal<string | null>(null);
+
+  readonly commentValue = signal<string>('');
+
+  // ---------------------------------
+  // External source values to adapt
+  // ---------------------------------
+  // IMPORTANT:
+  // Replace these 3 computed values with the exact source from your DTO / form / API.
+  // I kept them isolated so the rest of the logic stays clean.
+
+  readonly crSupportValue = computed<string | null>(() => {
+    // TODO: adapt path/source
+    // Example if from DTO:
+    // return this.workflowDTO()?.counterpartyRating?.pgnnrCounterpartyRatingDetails?.supportAdjustedCounterpartyRating ?? null;
+
+    // Example if from form:
+    // return this.ratingForm().get('pgnnrCounterpartyRatingDetails.counterpartyRatingSupport')?.value ?? null;
+
+    return this.workflowDTO()?.counterpartyRating?.pgnnrCounterpartyRatingDetails
+      ?.counterpartyRatingSupport ?? null;
   });
 
-  readonly dscrDisplay = computed(() => {
-    const value = this.formValue();
-
-    const cfads = this.toNumber(value.cfads);
-    const principalPaid = this.toNumber(value.principalPaid);
-    const interestExpenses = this.toNumber(value.interestExpenses);
-
-    const denominator = principalPaid + interestExpenses;
-    if (denominator === 0) {
-      return '/';
-    }
-
-    return this.formatRatio(cfads / denominator);
+  readonly mrcValue = computed<string | null>(() => {
+    // TODO: adapt path/source
+    return this.workflowDTO()?.counterpartyRating?.pgnnrCounterpartyRatingDetails
+      ?.maximumCountryRating ?? null;
   });
 
-  readonly selectedUnitLabel = computed(() => {
-    const unit = this.amortizingForm.controls.unit.value;
-    return this.referenceCurrencyUnitList.find(item => item.value === unit)?.label ?? '/';
+  readonly geometricMeanValue = computed<string | null>(() => {
+    // TODO: adapt path/source
+    return this.workflowDTO()?.counterpartyRating?.pgnnrCounterpartyRatingDetails
+      ?.geometricMeanRating ?? null;
   });
 
-  readonly selectedCurrencyLabel = computed(() => {
-    const currency = this.amortizingForm.controls.currency.value;
-    return this.currencyListWithAllData.find(item => item.value === currency)?.label ?? currency ?? '/';
+  // ---------------------------------
+  // Convenience computed
+  // ---------------------------------
+
+  readonly cr = computed(() => this.ratingProposedCtrl().value);
+  readonly ir = computed(() => this.intrinsicRatingProposedCtrl().value);
+  readonly crSupport = computed(() => this.crSupportValue());
+  readonly mrc = computed(() => this.mrcValue());
+  readonly geometricMean = computed(() => this.geometricMeanValue());
+
+  readonly comment = computed(() => (this.commentCtrl().value ?? '').trim());
+  readonly hasComment = computed(() => !!this.comment());
+
+  readonly displayFields = computed(() => !!this.ratingProposedValue());
+
+  readonly isRatingProposedAutoFill = computed(() => {
+    const supportDirection = this.supportDirectionValue();
+    const supportStrength = this.supportStrengthValue();
+
+    const isNegativeWeak =
+      supportDirection === 'NEGATIVE' && supportStrength === 'WEAK';
+
+    const isPositiveUndeterminedOrWeak =
+      supportDirection === 'POSITIVE' &&
+      (supportStrength === 'UNDETERMINED' || supportStrength === 'WEAK');
+
+    const hasNoSupportEffect = !supportDirection && !supportStrength;
+
+    return isNegativeWeak || isPositiveUndeterminedOrWeak || hasNoSupportEffect;
   });
 
-  constructor() {
-    this.registerFormInParent();
-    this.initCurrencyData();
-    this.setupDynamicValidators();
-    this.setupValidationRefresh();
-  }
+  // ---------------------------------
+  // Init
+  // ---------------------------------
 
-  getControl(key: ManualFieldKey): FormControl<NullableNumber> {
-    return this.amortizingForm.controls[key];
-  }
+  ngOnInit(): void {
+    this.ratingProposedCtrl()
+      .valueChanges.pipe(
+        startWith(this.ratingProposedCtrl().value),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(value => {
+        this.ratingProposedValue.set(value);
+      });
 
-  onSearchCurrencies(searchTerm: string): void {
-    const normalized = (searchTerm ?? '').trim().toLowerCase();
+    this.intrinsicRatingProposedCtrl()
+      .valueChanges.pipe(
+        startWith(this.intrinsicRatingProposedCtrl().value),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(value => {
+        this.intrinsicRatingProposedValue.set(value);
+      });
 
-    if (!normalized) {
-      this.currencyComboValues = [...this.currencyListWithAllData];
-      return;
-    }
+    this.supportDirectionCtrl()
+      .valueChanges.pipe(
+        startWith(this.supportDirectionCtrl().value),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(value => {
+        this.supportDirectionValue.set(value);
+      });
 
-    this.currencyComboValues = this.currencyListWithAllData.filter(item =>
-      item.label.toLowerCase().includes(normalized) ||
-      item.value.toLowerCase().includes(normalized)
-    );
-  }
+    this.supportStrengthCtrl()
+      .valueChanges.pipe(
+        startWith(this.supportStrengthCtrl().value),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(value => {
+        this.supportStrengthValue.set(value);
+      });
 
-  onClosingDateChange(event: { value: Date | null }): void {
-    this.amortizingForm.controls.closingDate.setValue(event.value);
-    this.amortizingForm.controls.closingDate.markAsDirty();
-    this.amortizingForm.controls.closingDate.updateValueAndValidity();
-  }
-
-  onAdjustedDebtToEquityClosingDateChange(event: { value: Date | null }): void {
-    this.amortizingForm.controls.adjustedDebtToEquityClosingDate.setValue(event.value);
-    this.amortizingForm.controls.adjustedDebtToEquityClosingDate.markAsDirty();
-    this.amortizingForm.controls.adjustedDebtToEquityClosingDate.updateValueAndValidity();
-  }
-
-  onAdjustedDscrIcrClosingDateChange(event: { value: Date | null }): void {
-    this.amortizingForm.controls.adjustedDscrIcrClosingDate.setValue(event.value);
-    this.amortizingForm.controls.adjustedDscrIcrClosingDate.markAsDirty();
-    this.amortizingForm.controls.adjustedDscrIcrClosingDate.updateValueAndValidity();
-  }
-
-  onLiquidityRiskChange(value: string): void {
-    this.amortizingForm.controls.liquidityRisk.setValue(value as LiquidityRisk);
-    this.amortizingForm.controls.liquidityRisk.markAsDirty();
-  }
-
-  private registerFormInParent(): void {
-    this.ratingForm().setControl('financialDrivers', this.amortizingForm);
-  }
-
-  private initCurrencyData(): void {
-    this.currencyListWithAllData = [
-      { label: 'EUR', value: 'EUR' },
-      { label: 'USD', value: 'USD' },
-      { label: 'GBP', value: 'GBP' },
-      { label: 'CHF', value: 'CHF' },
-    ];
-
-    this.currencyComboValues = [...this.currencyListWithAllData];
-  }
-
-  private setupDynamicValidators(): void {
-    this.amortizingForm.controls.principalPaid.addValidators(
-      this.positiveStrictValidator(FINANCIAL_DRIVERS_ALERT_KEYS.principalPaidPositive)
-    );
-    this.amortizingForm.controls.interestExpenses.addValidators(
-      this.positiveStrictValidator(FINANCIAL_DRIVERS_ALERT_KEYS.interestExpensesPositive)
-    );
-
-    this.amortizingForm.controls.closingDate.addValidators(
-      this.max21MonthsOldValidator(FINANCIAL_DRIVERS_ALERT_KEYS.closingDate21Months)
-    );
-    this.amortizingForm.controls.adjustedDebtToEquityClosingDate.addValidators(
-      this.max21MonthsOldValidator(FINANCIAL_DRIVERS_ALERT_KEYS.adjustedDebtToEquity21Months)
-    );
-    this.amortizingForm.controls.adjustedDscrIcrClosingDate.addValidators(
-      this.max21MonthsOldValidator(FINANCIAL_DRIVERS_ALERT_KEYS.adjustedDscrIcr21Months)
-    );
-
-    this.amortizingForm.updateValueAndValidity({ emitEvent: false });
-  }
-
-  private setupValidationRefresh(): void {
-    this.amortizingForm.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.amortizingForm.updateValueAndValidity({ emitEvent: false });
+    this.commentCtrl()
+      .valueChanges.pipe(
+        startWith(this.commentCtrl().value),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(value => {
+        this.commentValue.set((value ?? '').trim());
       });
   }
 
-  private manualSectionRequiredValidator(): ValidatorFn {
-    return (group: AbstractControl): ValidationErrors | null => {
-      const form = group as FormGroup;
+  // ---------------------------------
+  // Existing form / dto accessors
+  // ---------------------------------
+  // Keep your real implementation here
 
-      const manualFieldKeys: ManualFieldKey[] = [
-        'seniorGrossFinancialDebt',
-        'juniorMezzanineGrossFinancialDebt',
-        'equity',
-        'quasiEquity',
-        'cfads',
-        'principalPaid',
-        'interestExpenses',
-      ];
+  readonly ratingForm = signal<any>(null);
+  readonly workflowDTO = signal<any>(null);
+  readonly destroyRef = inject<any>(Object as any);
 
-      const hasAtLeastOneManualFieldFilled = manualFieldKeys.some(key =>
-        this.hasValue(form.get(key)?.value)
-      );
+  readonly isCounterpartyRating = computed(() => {
+    return true;
+  });
 
-      this.setControlError(
-        form.get('unit'),
-        FINANCIAL_DRIVERS_ALERT_KEYS.unitRequired,
-        hasAtLeastOneManualFieldFilled && !this.hasValue(form.get('unit')?.value)
-      );
+  // ---------------------------------
+  // BR02 required on rating proposed
+  // ---------------------------------
 
-      this.setControlError(
-        form.get('currency'),
-        FINANCIAL_DRIVERS_ALERT_KEYS.currencyRequired,
-        hasAtLeastOneManualFieldFilled && !this.hasValue(form.get('currency')?.value)
-      );
+  readonly ratingProposedRequiredEffect = effect(() => {
+    const ratingProposedCtrl = this.ratingProposedCtrl();
+    const isCounterpartyRating = this.isCounterpartyRating();
 
-      this.setControlError(
-        form.get('closingDate'),
-        FINANCIAL_DRIVERS_ALERT_KEYS.closingDateRequired,
-        hasAtLeastOneManualFieldFilled && !this.hasValue(form.get('closingDate')?.value)
-      );
-
-      return null;
-    };
-  }
-
-  private adjustedDebtToEquityValidator(): ValidatorFn {
-    return (group: AbstractControl): ValidationErrors | null => {
-      const form = group as FormGroup;
-      const adjustedDebtToEquity = form.get('adjustedDebtToEquity')?.value;
-
-      const shouldRequire = this.hasValue(adjustedDebtToEquity);
-
-      this.setControlError(
-        form.get('adjustedDebtToEquityClosingDate'),
-        FINANCIAL_DRIVERS_ALERT_KEYS.adjustedDebtToEquityClosingDateRequired,
-        shouldRequire && !this.hasValue(form.get('adjustedDebtToEquityClosingDate')?.value)
-      );
-
-      this.setControlError(
-        form.get('adjustedDebtToEquityComment'),
-        FINANCIAL_DRIVERS_ALERT_KEYS.adjustedDebtToEquityCommentRequired,
-        shouldRequire && !this.hasValue(form.get('adjustedDebtToEquityComment')?.value)
-      );
-
-      return null;
-    };
-  }
-
-  private adjustedDscrIcrValidator(): ValidatorFn {
-    return (group: AbstractControl): ValidationErrors | null => {
-      const form = group as FormGroup;
-      const adjustedDscrIcr = form.get('adjustedDscrIcr')?.value;
-
-      const shouldRequire = this.hasValue(adjustedDscrIcr);
-
-      this.setControlError(
-        form.get('adjustedDscrIcrClosingDate'),
-        FINANCIAL_DRIVERS_ALERT_KEYS.adjustedDscrIcrClosingDateRequired,
-        shouldRequire && !this.hasValue(form.get('adjustedDscrIcrClosingDate')?.value)
-      );
-
-      this.setControlError(
-        form.get('adjustedDscrIcrComment'),
-        FINANCIAL_DRIVERS_ALERT_KEYS.adjustedDscrIcrCommentRequired,
-        shouldRequire && !this.hasValue(form.get('adjustedDscrIcrComment')?.value)
-      );
-
-      return null;
-    };
-  }
-
-  private positiveStrictValidator(errorKey: string): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const value = control.value;
-
-      if (!this.hasValue(value)) {
-        return null;
-      }
-
-      return Number(value) > 0 ? null : { [errorKey]: true };
-    };
-  }
-
-  private max21MonthsOldValidator(errorKey: string): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const value = control.value as Date | null;
-
-      if (!value) {
-        return null;
-      }
-
-      const inputDate = new Date(value);
-      if (Number.isNaN(inputDate.getTime())) {
-        return null;
-      }
-
-      const today = new Date();
-      const limitDate = new Date(today);
-      limitDate.setMonth(today.getMonth() - 21);
-
-      return inputDate < limitDate ? { [errorKey]: true } : null;
-    };
-  }
-
-  private setControlError(
-    control: AbstractControl | null,
-    errorKey: string,
-    shouldSet: boolean
-  ): void {
-    if (!control) {
-      return;
+    if (isCounterpartyRating) {
+      ratingProposedCtrl.addValidators([Validators.required]);
+    } else {
+      ratingProposedCtrl.clearValidators();
     }
 
-    const errors = { ...(control.errors ?? {}) };
+    ratingProposedCtrl.updateValueAndValidity({ emitEvent: false });
+  });
 
-    if (shouldSet) {
-      errors[errorKey] = true;
-      control.setErrors(errors);
-      return;
+  // ---------------------------------
+  // BR04 auto-fill + readonly
+  // ---------------------------------
+
+  readonly syncRatingValueEffect = effect(
+    () => {
+      const ratingProposedCtrl = this.ratingProposedCtrl();
+      const intrinsicRatingValue = this.intrinsicRatingProposedValue();
+      const isAutoFill = this.isRatingProposedAutoFill();
+
+      if (isAutoFill && ratingProposedCtrl.value !== intrinsicRatingValue) {
+        ratingProposedCtrl.setValue(intrinsicRatingValue, { emitEvent: false });
+        this.ratingProposedValue.set(intrinsicRatingValue);
+      } else if (
+        !isAutoFill &&
+        !this.workflowDTO()?.counterpartyRating?.pgnnrCounterpartyRatingDetails
+          ?.counterpartyRatingProposed
+      ) {
+        ratingProposedCtrl.setValue(null, { emitEvent: false });
+      }
+    },
+    { allowSignalWrites: true }
+  );
+
+  readonly ratingProposedReadonlyEffect = effect(() => {
+    const ratingProposedCtrl = this.ratingProposedCtrl();
+    const isAutoFill = this.isRatingProposedAutoFill();
+
+    if (isAutoFill && ratingProposedCtrl.enabled) {
+      ratingProposedCtrl.disable({ emitEvent: false });
+    } else if (!isAutoFill && ratingProposedCtrl.disabled) {
+      ratingProposedCtrl.enable({ emitEvent: false });
     }
 
-    delete errors[errorKey];
-    control.setErrors(Object.keys(errors).length ? errors : null);
+    ratingProposedCtrl.updateValueAndValidity({ emitEvent: false });
+  });
+
+  // ---------------------------------
+  // Comparison helpers
+  // Use your real implementation if already موجودة
+  // ---------------------------------
+
+  private better(left: string | null, right: string | null): boolean {
+    if (!left || !right) {
+      return false;
+    }
+
+    // TODO: replace by your real note comparison function
+    // Example:
+    // return this.ratingComparisonService.better(left, right);
+
+    return false;
   }
 
-  private hasValue(value: unknown): boolean {
-    return value !== null && value !== undefined && value !== '';
+  private worse(left: string | null, right: string | null): boolean {
+    if (!left || !right) {
+      return false;
+    }
+
+    // TODO: replace by your real note comparison function
+    // Example:
+    // return this.ratingComparisonService.worse(left, right);
+
+    return false;
   }
 
-  private toNumber(value: unknown): number {
-    return typeof value === 'number' && !Number.isNaN(value) ? value : 0;
+  private equal(left: string | null, right: string | null): boolean {
+    if (!left || !right) {
+      return false;
+    }
+
+    return !this.better(left, right) && !this.worse(left, right);
   }
 
-  private formatRatio(value: number): string {
-    return Number.isFinite(value) ? value.toFixed(2) : '/';
+  private isBetween(
+    value: string | null,
+    boundA: string | null,
+    boundB: string | null
+  ): boolean {
+    if (!value || !boundA || !boundB) {
+      return false;
+    }
+
+    if (this.equal(value, boundA) || this.equal(value, boundB)) {
+      return true;
+    }
+
+    const betweenAB = this.better(value, boundA) && this.worse(value, boundB);
+    const betweenBA = this.worse(value, boundA) && this.better(value, boundB);
+
+    return betweenAB || betweenBA;
+  }
+
+  // ---------------------------------
+  // Derived comparisons
+  // ---------------------------------
+
+  readonly isCrBetterThanIr = computed(() => this.better(this.cr(), this.ir()));
+  readonly isCrWorseThanIr = computed(() => this.worse(this.cr(), this.ir()));
+
+  readonly isCrBetterThanMrc = computed(() =>
+    this.better(this.cr(), this.mrc())
+  );
+
+  readonly isCrSupportBetterThanIr = computed(() =>
+    this.better(this.crSupport(), this.ir())
+  );
+
+  readonly isCrSupportWorseThanIr = computed(() =>
+    this.worse(this.crSupport(), this.ir())
+  );
+
+  readonly isCrSupportBetterThanMrc = computed(() =>
+    this.better(this.crSupport(), this.mrc())
+  );
+
+  readonly isCrSupportWorseThanMrc = computed(() =>
+    this.worse(this.crSupport(), this.mrc())
+  );
+
+  readonly isCrBelowGeometricMean = computed(() =>
+    this.worse(this.cr(), this.geometricMean())
+  );
+
+  readonly isCrBetweenIrAndMrc = computed(() =>
+    this.isBetween(this.cr(), this.ir(), this.mrc())
+  );
+
+  readonly isCrBetweenIrAndCrSupport = computed(() =>
+    this.isBetween(this.cr(), this.ir(), this.crSupport())
+  );
+
+  // ---------------------------------
+  // BR05 / BR06 + AC#8 -> AC#33
+  // ---------------------------------
+
+  readonly ratingConsistencyResult = computed<RatingValidationResult>(() => {
+    const supportDirection = this.supportDirectionValue();
+    const supportStrength = this.supportStrengthValue();
+    const hasComment = this.hasComment();
+    const isAutoFill = this.isRatingProposedAutoFill();
+
+    if (isAutoFill) {
+      return { severity: 'none', target: 'none', code: null };
+    }
+
+    // -------------------------------
+    // NEGATIVE + STRONG / VERY_STRONG
+    // AC#8 #9 #10 #11 #12 #13
+    // -------------------------------
+    const isNegativeStrongFamily =
+      supportDirection === 'NEGATIVE' &&
+      (supportStrength === 'STRONG' || supportStrength === 'VERY_STRONG');
+
+    if (isNegativeStrongFamily) {
+      if (this.isCrBetterThanIr()) {
+        return {
+          severity: hasComment ? 'warning' : 'error',
+          target: 'rating',
+          code: 'supportConsistency',
+        };
+      }
+
+      return { severity: 'none', target: 'none', code: null };
+    }
+
+    // -------------------------------
+    // POSITIVE + STRONG
+    // AC#14 -> AC#21
+    // -------------------------------
+    if (supportDirection === 'POSITIVE' && supportStrength === 'STRONG') {
+      if (this.isCrSupportWorseThanIr()) {
+        return {
+          severity: hasComment ? 'warning' : 'error',
+          target: 'rating',
+          code: 'supportConsistency',
+        };
+      }
+
+      if (
+        this.isCrSupportBetterThanIr() &&
+        this.isCrSupportBetterThanMrc() &&
+        !this.isCrBetweenIrAndMrc()
+      ) {
+        return {
+          severity: hasComment ? 'warning' : 'error',
+          target: 'rating',
+          code: 'supportConsistency',
+        };
+      }
+
+      if (
+        this.isCrSupportBetterThanIr() &&
+        this.isCrSupportWorseThanMrc() &&
+        !this.isCrBetweenIrAndCrSupport()
+      ) {
+        return {
+          severity: hasComment ? 'warning' : 'error',
+          target: 'rating',
+          code: 'supportConsistency',
+        };
+      }
+
+      return { severity: 'none', target: 'none', code: null };
+    }
+
+    // -------------------------------
+    // POSITIVE + VERY_STRONG
+    // AC#22 -> AC#29
+    // -------------------------------
+    if (supportDirection === 'POSITIVE' && supportStrength === 'VERY_STRONG') {
+      if (this.isCrSupportWorseThanIr()) {
+        return {
+          severity: hasComment ? 'warning' : 'error',
+          target: 'rating',
+          code: 'supportConsistency',
+        };
+      }
+
+      if (
+        this.isCrSupportBetterThanIr() &&
+        this.isCrSupportBetterThanMrc() &&
+        !this.isCrBetweenIrAndCrSupport() &&
+        this.isCrBelowGeometricMean()
+      ) {
+        return {
+          severity: hasComment ? 'warning' : 'error',
+          target: 'rating',
+          code: 'supportConsistency',
+        };
+      }
+
+      if (
+        this.isCrSupportBetterThanIr() &&
+        this.isCrSupportWorseThanMrc() &&
+        !this.isCrBetweenIrAndCrSupport()
+      ) {
+        return {
+          severity: hasComment ? 'warning' : 'error',
+          target: 'rating',
+          code: 'supportConsistency',
+        };
+      }
+
+      return { severity: 'none', target: 'none', code: null };
+    }
+
+    // -------------------------------
+    // POSITIVE + ABSOLUTE
+    // AC#30 -> AC#33
+    // -------------------------------
+    if (supportDirection === 'POSITIVE' && supportStrength === 'ABSOLUTE') {
+      if (this.isCrSupportWorseThanIr()) {
+        return { severity: 'none', target: 'none', code: null };
+      }
+
+      if (
+        this.isCrSupportBetterThanIr() &&
+        this.isCrSupportBetterThanMrc()
+      ) {
+        return { severity: 'none', target: 'none', code: null };
+      }
+
+      if (
+        this.isCrSupportBetterThanIr() &&
+        this.isCrSupportWorseThanMrc()
+      ) {
+        return {
+          severity: hasComment ? 'warning' : 'error',
+          target: 'rating',
+          code: 'supportConsistency',
+        };
+      }
+
+      return { severity: 'none', target: 'none', code: null };
+    }
+
+    return { severity: 'none', target: 'none', code: null };
+  });
+
+  // ---------------------------------
+  // BR07 / BR08 + AC#34 / AC#35
+  // ---------------------------------
+
+  readonly mrcCommentResult = computed<RatingValidationResult>(() => {
+    if (!this.isCrBetterThanMrc()) {
+      return { severity: 'none', target: 'none', code: null };
+    }
+
+    return {
+      severity: this.hasComment() ? 'warning' : 'error',
+      target: 'comment',
+      code: 'mrcCommentRequired',
+    };
+  });
+
+  // ---------------------------------
+  // Effects: apply rating consistency validation
+  // ---------------------------------
+
+  readonly ratingConsistencyEffect = effect(() => {
+    const result = this.ratingConsistencyResult();
+    const ratingCtrl = this.ratingProposedCtrl();
+
+    const currentErrors = ratingCtrl.errors ?? {};
+    const {
+      supportConsistency,
+      ...otherErrors
+    }: Record<string, any> = currentErrors;
+
+    if (result.target === 'rating' && result.code === 'supportConsistency') {
+      ratingCtrl.setErrors({
+        ...otherErrors,
+        supportConsistency: result.severity,
+      });
+
+      if (result.severity === 'error') {
+        this.addRatingErrorAlert('counterpartyRatingSupportConsistencyError');
+        this.clearRatingWarningAlert();
+      } else if (result.severity === 'warning') {
+        this.addRatingWarningAlert('counterpartyRatingSupportConsistencyWarning');
+        this.clearRatingErrorAlert();
+      }
+    } else {
+      ratingCtrl.setErrors(Object.keys(otherErrors).length ? otherErrors : null);
+      this.clearRatingErrorAlert();
+      this.clearRatingWarningAlert();
+    }
+
+    ratingCtrl.updateValueAndValidity({ emitEvent: false });
+  });
+
+  // ---------------------------------
+  // Effects: apply comment MRC validation
+  // ---------------------------------
+
+  readonly commentMrcValidationEffect = effect(() => {
+    const result = this.mrcCommentResult();
+    const commentCtrl = this.commentCtrl();
+
+    const currentErrors = commentCtrl.errors ?? {};
+    const {
+      mrcCommentRequired,
+      ...otherErrors
+    }: Record<string, any> = currentErrors;
+
+    if (result.target === 'comment' && result.code === 'mrcCommentRequired') {
+      commentCtrl.setErrors({
+        ...otherErrors,
+        mrcCommentRequired: result.severity,
+      });
+
+      if (result.severity === 'error') {
+        this.addCommentErrorAlert('counterpartyRatingAboveMrcError');
+        this.clearCommentWarningAlert();
+      } else if (result.severity === 'warning') {
+        this.addCommentWarningAlert('counterpartyRatingAboveMrcWarning');
+        this.clearCommentErrorAlert();
+      }
+    } else {
+      commentCtrl.setErrors(Object.keys(otherErrors).length ? otherErrors : null);
+      this.clearCommentErrorAlert();
+      this.clearCommentWarningAlert();
+    }
+
+    commentCtrl.updateValueAndValidity({ emitEvent: false });
+  });
+
+  // ---------------------------------
+  // Alerts
+  // IMPORTANT:
+  // the alertTextId values below must exist in WORKFLOW_ALERTS_MESSAGES
+  // ---------------------------------
+
+  private addRatingErrorAlert(alertTextId: string): void {
+    const alerts: IAlert[] = [
+      {
+        alertTextId,
+        fragmentId: 'counterpartyRating',
+        anchorId: 'counterpartyRatingProposed',
+      },
+    ];
+
+    this.workflowValidationService.addWorkflowAlerts('errors', alerts);
+  }
+
+  private addRatingWarningAlert(alertTextId: string): void {
+    const alerts: IAlert[] = [
+      {
+        alertTextId,
+        fragmentId: 'counterpartyRating',
+        anchorId: 'counterpartyRatingProposed',
+      },
+    ];
+
+    this.workflowValidationService.addWorkflowAlerts('warnings', alerts);
+  }
+
+  private clearRatingErrorAlert(): void {
+    this.workflowValidationService.clearAlertsByFragmentId(
+      'errors',
+      'counterpartyRating'
+    );
+  }
+
+  private clearRatingWarningAlert(): void {
+    this.workflowValidationService.clearAlertsByFragmentId(
+      'warnings',
+      'counterpartyRating'
+    );
+  }
+
+  private addCommentErrorAlert(alertTextId: string): void {
+    const alerts: IAlert[] = [
+      {
+        alertTextId,
+        fragmentId: 'counterpartyRating',
+        anchorId: 'counterpartyRatingComment',
+      },
+    ];
+
+    this.workflowValidationService.addWorkflowAlerts('errors', alerts);
+  }
+
+  private addCommentWarningAlert(alertTextId: string): void {
+    const alerts: IAlert[] = [
+      {
+        alertTextId,
+        fragmentId: 'counterpartyRating',
+        anchorId: 'counterpartyRatingComment',
+      },
+    ];
+
+    this.workflowValidationService.addWorkflowAlerts('warnings', alerts);
+  }
+
+  private clearCommentErrorAlert(): void {
+    this.workflowValidationService.clearAlertsByFragmentId(
+      'errors',
+      'counterpartyRating'
+    );
+  }
+
+  private clearCommentWarningAlert(): void {
+    this.workflowValidationService.clearAlertsByFragmentId(
+      'warnings',
+      'counterpartyRating'
+    );
   }
 }
-
-
-
-
-
-////
-
-
-
-
-<mat-accordion class="accordion-container" multi hideToggle>
-  <mat-expansion-panel class="crf-expansion-panel" #panel [expanded]="true">
-    <mat-expansion-panel-header class="workflow-details-panel-header">
-      <mat-panel-title>
-        <div class="header-panel-container">
-          <span class="title-text" i18n="@@financialDriversTitle">Drivers financiers</span>
-          <mat-icon class="panel-expand-icon">
-            {{ panel.expanded ? 'remove' : 'add' }}
-          </mat-icon>
-        </div>
-      </mat-panel-title>
-    </mat-expansion-panel-header>
-
-    <div class="crf-mat-expansion-content">
-      <mat-card class="crf-mat-expansion-content-card">
-        <mat-card-content>
-          <form [formGroup]="amortizingForm">
-            <div class="row-item fade-in">
-              <div class="row-label" i18n="@@financialDriversUnitLabel">Unité</div>
-
-              <div class="row-content">
-                <div class="reference-currency-column">
-                  <div class="reference-currency-row">
-                    <div class="reference-currency-item">
-                      <bnpp-workflow-select-list
-                        [placeholder]="$localize`:@@financialDriversUnitPlaceholder:Unité`"
-                        [itemsList]="referenceCurrencyUnitList"
-                        [colorTheme]="'RATING_THEME'"
-                        [selectControl]="$any(amortizingForm.get('unit'))"
-                      >
-                      </bnpp-workflow-select-list>
-                    </div>
-                  </div>
-                </div>
-
-                @if (
-                  (amortizingForm.controls.unit.touched || validationInProgress()) &&
-                  amortizingForm.controls.unit.errors &&
-                  amortizingForm.controls.unit.errors['financialDriversUnitRequired']
-                ) {
-                  <div class="field-error" i18n="@@fieldMissingErrorLabel">
-                    Ce champ est manquant
-                  </div>
-                }
-              </div>
-            </div>
-
-            <div class="row-item fade-in">
-              <div class="row-label" i18n="@@financialDriversCurrencyLabel">
-                Devise
-              </div>
-
-              <div class="row-content">
-                <bnpp-workflow-autocomplete
-                  class="w-100"
-                  [placeholder]="$localize`:@@financialDriversCurrencyPlaceholder:Devise`"
-                  [itemsList]="currencyComboValues"
-                  [autocompleteControl]="$any(amortizingForm.get('currency'))"
-                  (inputChangedValueEvent)="onSearchCurrencies($event)"
-                  [colorTheme]="'RATING_THEME'"
-                >
-                </bnpp-workflow-autocomplete>
-
-                @if (
-                  (amortizingForm.controls.currency.touched || validationInProgress()) &&
-                  amortizingForm.controls.currency.errors &&
-                  amortizingForm.controls.currency.errors['financialDriversCurrencyRequired']
-                ) {
-                  <div class="field-error" i18n="@@fieldMissingErrorLabel">
-                    Ce champ est manquant
-                  </div>
-                }
-              </div>
-            </div>
-
-            <div class="row-item fade-in">
-              <div class="row-label" i18n="@@financialDriversClosingDateLabel">
-                Date de clôture
-              </div>
-
-              <div class="row-content row-content-full">
-                <mat-form-field appearance="outline" class="w-100 date-field">
-                  <input
-                    matInput
-                    [matDatepicker]="closingDatePicker"
-                    [formControl]="amortizingForm.controls.closingDate"
-                    (dateChange)="onClosingDateChange($event)"
-                    i18n-placeholder="@@financialDriversClosingDatePlaceholder"
-                    placeholder="Date de clôture"
-                  />
-                  <mat-datepicker-toggle
-                    matIconSuffix
-                    [for]="closingDatePicker"
-                  ></mat-datepicker-toggle>
-                  <mat-datepicker #closingDatePicker></mat-datepicker>
-                </mat-form-field>
-
-                @if (
-                  (amortizingForm.controls.closingDate.touched || validationInProgress()) &&
-                  amortizingForm.controls.closingDate.errors &&
-                  amortizingForm.controls.closingDate.errors['financialDriversClosingDateRequired']
-                ) {
-                  <div class="field-error" i18n="@@fieldMissingErrorLabel">
-                    Ce champ est manquant
-                  </div>
-                }
-
-                @if (
-                  (amortizingForm.controls.closingDate.touched || validationInProgress()) &&
-                  amortizingForm.controls.closingDate.errors &&
-                  amortizingForm.controls.closingDate.errors['financialDriversClosingDate21Months']
-                ) {
-                  <div class="field-error" i18n="@@fieldIncorrectLabel">
-                    Veuillez modifier votre saisie
-                  </div>
-                }
-              </div>
-            </div>
-
-            @for (field of manualFields(); track field.key) {
-              <div class="row-item fade-in">
-                <div class="row-label">
-                  <span>{{ field.label }}</span>
-
-                  @if (field.showInfoIcon) {
-                    <mat-icon class="info-icon">info</mat-icon>
-                  }
-                </div>
-
-                <div class="row-content">
-                  <bnpp-workflow-input
-                    class="w-100"
-                    [formControl]="getControl(field.key)"
-                    [formFieldLabel]="field.placeholder"
-                    [placeholderKey]="field.placeholder"
-                    [inputType]="'number'"
-                  >
-                  </bnpp-workflow-input>
-
-                  @if (
-                    field.key === 'principalPaid' &&
-                    (getControl(field.key).touched || validationInProgress()) &&
-                    getControl(field.key).errors &&
-                    getControl(field.key).errors['financialDriversPrincipalPaidPositive']
-                  ) {
-                    <div class="field-error" i18n="@@financialDriversPositiveValueInlineLabel">
-                      Ce champ doit être une valeur positive
-                    </div>
-                  }
-
-                  @if (
-                    field.key === 'interestExpenses' &&
-                    (getControl(field.key).touched || validationInProgress()) &&
-                    getControl(field.key).errors &&
-                    getControl(field.key).errors['financialDriversInterestExpensesPositive']
-                  ) {
-                    <div class="field-error" i18n="@@financialDriversPositiveValueInlineLabel">
-                      Ce champ doit être une valeur positive
-                    </div>
-                  }
-                </div>
-
-                <div class="row-content">
-                  <div class="data-container readonly-meta-container">
-                    <span class="data-text" i18n="@@financialDriversInheritedUnitLabel">
-                      Unité héritée
-                    </span>
-                    <span class="text-capitalize data-indicator">
-                      {{ selectedUnitLabel() }}
-                    </span>
-                  </div>
-                </div>
-
-                <div class="row-content">
-                  <div class="data-container readonly-meta-container">
-                    <span class="data-text" i18n="@@financialDriversInheritedCurrencyLabel">
-                      Devise héritée
-                    </span>
-                    <span class="text-capitalize data-indicator">
-                      {{ selectedCurrencyLabel() }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            }
-
-            <div class="row-item fade-in">
-              <div class="row-label" i18n="@@financialDriversDataLabel">Data</div>
-
-              <div class="row-content">
-                <div class="data-container">
-                  <span class="data-text" i18n="@@financialDriversDebtToEquityLabel">
-                    Dette sur Capitaux Propres
-                  </span>
-                  <span class="text-capitalize data-indicator">
-                    {{ debtToEquityDisplay() }}
-                  </span>
-                </div>
-              </div>
-
-              <div class="row-content">
-                <div class="data-container">
-                  <span class="data-text" i18n="@@financialDriversDscrLabel">
-                    DSCR
-                  </span>
-                  <span class="text-capitalize data-indicator">
-                    {{ dscrDisplay() }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div class="row-item fade-in">
-              <div class="row-label" i18n="@@financialDriversAdjustedDebtToEquityLabel">
-                Dette sur Capitaux Propres ajustée (si nécessaire)
-              </div>
-
-              <div class="row-content">
-                <bnpp-workflow-input
-                  class="w-100"
-                  [formControl]="$any(amortizingForm.get('adjustedDebtToEquity'))"
-                  [formFieldLabel]="$localize`:@@financialDriversAdjustedDebtToEquityLabel:Dette sur Capitaux Propres ajustée (si nécessaire)`"
-                  [placeholderKey]="$localize`:@@financialDriversAdjustedDebtToEquityPlaceholder:Dette sur Capitaux Propres ajustée`"
-                  [inputType]="'number'"
-                >
-                </bnpp-workflow-input>
-              </div>
-
-              <div class="row-content">
-                <div class="data-container readonly-meta-container">
-                  <span class="data-text" i18n="@@financialDriversInheritedUnitLabel">
-                    Unité héritée
-                  </span>
-                  <span class="text-capitalize data-indicator">
-                    {{ selectedUnitLabel() }}
-                  </span>
-                </div>
-              </div>
-
-              <div class="row-content">
-                <div class="data-container readonly-meta-container">
-                  <span class="data-text" i18n="@@financialDriversInheritedCurrencyLabel">
-                    Devise héritée
-                  </span>
-                  <span class="text-capitalize data-indicator">
-                    {{ selectedCurrencyLabel() }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div class="row-item fade-in">
-              <div class="row-label" i18n="@@financialDriversAdjustedDebtToEquityClosingDateLabel">
-                Date de clôture du Debt to Equity ajusté
-              </div>
-
-              <div class="row-content row-content-full">
-                <mat-form-field appearance="outline" class="w-100 date-field">
-                  <input
-                    matInput
-                    [matDatepicker]="adjustedDebtToEquityDatePicker"
-                    [formControl]="amortizingForm.controls.adjustedDebtToEquityClosingDate"
-                    (dateChange)="onAdjustedDebtToEquityClosingDateChange($event)"
-                    i18n-placeholder="@@financialDriversAdjustedDebtToEquityClosingDatePlaceholder"
-                    placeholder="Date de clôture du Debt to Equity ajusté"
-                  />
-                  <mat-datepicker-toggle
-                    matIconSuffix
-                    [for]="adjustedDebtToEquityDatePicker"
-                  ></mat-datepicker-toggle>
-                  <mat-datepicker #adjustedDebtToEquityDatePicker></mat-datepicker>
-                </mat-form-field>
-
-                @if (
-                  (amortizingForm.controls.adjustedDebtToEquityClosingDate.touched || validationInProgress()) &&
-                  amortizingForm.controls.adjustedDebtToEquityClosingDate.errors &&
-                  amortizingForm.controls.adjustedDebtToEquityClosingDate.errors['financialDriversAdjustedDebtToEquityClosingDateRequired']
-                ) {
-                  <div class="field-error" i18n="@@fieldMissingErrorLabel">
-                    Ce champ est manquant
-                  </div>
-                }
-
-                @if (
-                  (amortizingForm.controls.adjustedDebtToEquityClosingDate.touched || validationInProgress()) &&
-                  amortizingForm.controls.adjustedDebtToEquityClosingDate.errors &&
-                  amortizingForm.controls.adjustedDebtToEquityClosingDate.errors['financialDriversAdjustedDebtToEquity21Months']
-                ) {
-                  <div class="field-error" i18n="@@fieldIncorrectLabel">
-                    Veuillez modifier votre saisie
-                  </div>
-                }
-              </div>
-            </div>
-
-            <div class="row-item fade-in">
-              <div class="row-label" i18n="@@financialDriversAdjustedDebtToEquityCommentLabel">
-                Commentaire en cas de Debt to Equity ajusté
-              </div>
-
-              <div class="row-content row-content-full">
-                <mat-form-field appearance="outline" class="w-100">
-                  <textarea
-                    matInput
-                    rows="3"
-                    [formControl]="amortizingForm.controls.adjustedDebtToEquityComment"
-                    i18n-placeholder="@@financialDriversAdjustedDebtToEquityCommentPlaceholder"
-                    placeholder="Commentaire en cas de Debt to Equity ajusté"
-                  ></textarea>
-                </mat-form-field>
-
-                @if (
-                  (amortizingForm.controls.adjustedDebtToEquityComment.touched || validationInProgress()) &&
-                  amortizingForm.controls.adjustedDebtToEquityComment.errors &&
-                  amortizingForm.controls.adjustedDebtToEquityComment.errors['financialDriversAdjustedDebtToEquityCommentRequired']
-                ) {
-                  <div class="field-error" i18n="@@fieldMissingErrorLabel">
-                    Ce champ est manquant
-                  </div>
-                }
-              </div>
-            </div>
-
-            <div class="row-item fade-in">
-              <div class="row-label" i18n="@@financialDriversAdjustedDscrIcrLabel">
-                DSCR/ICR ajusté (si nécessaire)
-              </div>
-
-              <div class="row-content">
-                <bnpp-workflow-input
-                  class="w-100"
-                  [formControl]="$any(amortizingForm.get('adjustedDscrIcr'))"
-                  [formFieldLabel]="$localize`:@@financialDriversAdjustedDscrIcrLabel:DSCR/ICR ajusté (si nécessaire)`"
-                  [placeholderKey]="$localize`:@@financialDriversAdjustedDscrIcrPlaceholder:DSCR/ICR ajusté`"
-                  [inputType]="'number'"
-                >
-                </bnpp-workflow-input>
-              </div>
-
-              <div class="row-content">
-                <div class="data-container readonly-meta-container">
-                  <span class="data-text" i18n="@@financialDriversInheritedUnitLabel">
-                    Unité héritée
-                  </span>
-                  <span class="text-capitalize data-indicator">
-                    {{ selectedUnitLabel() }}
-                  </span>
-                </div>
-              </div>
-
-              <div class="row-content">
-                <div class="data-container readonly-meta-container">
-                  <span class="data-text" i18n="@@financialDriversInheritedCurrencyLabel">
-                    Devise héritée
-                  </span>
-                  <span class="text-capitalize data-indicator">
-                    {{ selectedCurrencyLabel() }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div class="row-item fade-in">
-              <div class="row-label" i18n="@@financialDriversAdjustedDscrIcrClosingDateLabel">
-                Date d’arrêté de DSCR/ICR ajusté
-              </div>
-
-              <div class="row-content row-content-full">
-                <mat-form-field appearance="outline" class="w-100 date-field">
-                  <input
-                    matInput
-                    [matDatepicker]="adjustedDscrDatePicker"
-                    [formControl]="amortizingForm.controls.adjustedDscrIcrClosingDate"
-                    (dateChange)="onAdjustedDscrIcrClosingDateChange($event)"
-                    i18n-placeholder="@@financialDriversAdjustedDscrIcrClosingDatePlaceholder"
-                    placeholder="Date d’arrêté de DSCR/ICR ajusté"
-                  />
-                  <mat-datepicker-toggle
-                    matIconSuffix
-                    [for]="adjustedDscrDatePicker"
-                  ></mat-datepicker-toggle>
-                  <mat-datepicker #adjustedDscrDatePicker></mat-datepicker>
-                </mat-form-field>
-
-                @if (
-                  (amortizingForm.controls.adjustedDscrIcrClosingDate.touched || validationInProgress()) &&
-                  amortizingForm.controls.adjustedDscrIcrClosingDate.errors &&
-                  amortizingForm.controls.adjustedDscrIcrClosingDate.errors['financialDriversAdjustedDscrIcrClosingDateRequired']
-                ) {
-                  <div class="field-error" i18n="@@fieldMissingErrorLabel">
-                    Ce champ est manquant
-                  </div>
-                }
-
-                @if (
-                  (amortizingForm.controls.adjustedDscrIcrClosingDate.touched || validationInProgress()) &&
-                  amortizingForm.controls.adjustedDscrIcrClosingDate.errors &&
-                  amortizingForm.controls.adjustedDscrIcrClosingDate.errors['financialDriversAdjustedDscrIcr21Months']
-                ) {
-                  <div class="field-error" i18n="@@fieldIncorrectLabel">
-                    Veuillez modifier votre saisie
-                  </div>
-                }
-              </div>
-            </div>
-
-            <div class="row-item fade-in">
-              <div class="row-label" i18n="@@financialDriversAdjustedDscrIcrCommentLabel">
-                Commentaire en cas de DSCR/ICR ajusté
-              </div>
-
-              <div class="row-content row-content-full">
-                <mat-form-field appearance="outline" class="w-100">
-                  <textarea
-                    matInput
-                    rows="3"
-                    [formControl]="amortizingForm.controls.adjustedDscrIcrComment"
-                    i18n-placeholder="@@financialDriversAdjustedDscrIcrCommentPlaceholder"
-                    placeholder="Commentaire en cas de DSCR/ICR ajusté"
-                  ></textarea>
-                </mat-form-field>
-
-                @if (
-                  (amortizingForm.controls.adjustedDscrIcrComment.touched || validationInProgress()) &&
-                  amortizingForm.controls.adjustedDscrIcrComment.errors &&
-                  amortizingForm.controls.adjustedDscrIcrComment.errors['financialDriversAdjustedDscrIcrCommentRequired']
-                ) {
-                  <div class="field-error" i18n="@@fieldMissingErrorLabel">
-                    Ce champ est manquant
-                  </div>
-                }
-              </div>
-            </div>
-
-            <div class="row-item fade-in">
-              <div class="row-label" i18n="@@financialDriversLiquidityRiskLabel">
-                Risque de liquidité (LR)
-              </div>
-
-              <div class="row-content row-content-full">
-                <div class="chips-container">
-                  @for (option of liquidityRiskOptions; track option.value) {
-                    <button
-                      type="button"
-                      class="chip-button"
-                      [class.selected]="amortizingForm.controls.liquidityRisk.value === option.value"
-                      (click)="onLiquidityRiskChange(option.value)"
-                    >
-                      {{ option.label }}
-                    </button>
-                  }
-                </div>
-              </div>
-            </div>
-          </form>
-        </mat-card-content>
-      </mat-card>
-    </div>
-  </mat-expansion-panel>
-</mat-accordion>
-
-
-                      ////
-
-
-  export const WORKFLOW_ALERTS_MESSAGES = {
-  // ... existant
-
-  financialDriversUnitRequired: $localize`:@@financialDriversUnitRequiredAlert:Drivers financiers : le champ Unité est obligatoire.`,
-  financialDriversCurrencyRequired: $localize`:@@financialDriversCurrencyRequiredAlert:Drivers financiers : le champ Devise est obligatoire.`,
-  financialDriversClosingDateRequired: $localize`:@@financialDriversClosingDateRequiredAlert:Drivers financiers : le champ Date de clôture est obligatoire.`,
-
-  financialDriversClosingDate21Months: $localize`:@@financialDriversClosingDate21MonthsAlert:La date des données financières doit être récente (moins de 21 mois), merci de modifier votre saisie.`,
-
-  financialDriversPrincipalPaidPositive: $localize`:@@financialDriversPrincipalPaidPositiveAlert:Principal Paid doit être une valeur positive.`,
-  financialDriversInterestExpensesPositive: $localize`:@@financialDriversInterestExpensesPositiveAlert:Interest Expenses doit être une valeur positive.`,
-
-  financialDriversAdjustedDebtToEquityClosingDateRequired: $localize`:@@financialDriversAdjustedDebtToEquityClosingDateRequiredAlert:Drivers financiers : le champ Date de clôture du Debt to Equity ajusté est obligatoire.`,
-  financialDriversAdjustedDebtToEquityCommentRequired: $localize`:@@financialDriversAdjustedDebtToEquityCommentRequiredAlert:Drivers financiers : le champ Commentaire en cas de Debt to Equity ajusté est obligatoire.`,
-  financialDriversAdjustedDebtToEquity21Months: $localize`:@@financialDriversAdjustedDebtToEquity21MonthsAlert:La date du ratio Debt-to-Equity doit être récente (21 mois), veuillez modifier votre saisie.`,
-
-  financialDriversAdjustedDscrIcrClosingDateRequired: $localize`:@@financialDriversAdjustedDscrIcrClosingDateRequiredAlert:Drivers financiers : le champ Date d’arrêté de DSCR/ICR ajusté est obligatoire.`,
-  financialDriversAdjustedDscrIcrCommentRequired: $localize`:@@financialDriversAdjustedDscrIcrCommentRequiredAlert:Drivers financiers : le champ Commentaire en cas de DSCR/ICR ajusté est obligatoire.`,
-  financialDriversAdjustedDscrIcr21Months: $localize`:@@financialDriversAdjustedDscrIcr21MonthsAlert:La date d’arrêté de DSCR / ICR ajusté doit être récente (moins de 21 mois), merci de modifier votre saisie.`,
-};
-
-
-
-
-////
-
-
-export const customErrorMessages: Record<string, Record<string, string>> = {
-  // ... existant
-
-  unit: {
-    required: 'financialDriversUnitRequired',
-  },
-  currency: {
-    required: 'financialDriversCurrencyRequired',
-  },
-  closingDate: {
-    required: 'financialDriversClosingDateRequired',
-  },
-  adjustedDebtToEquityClosingDate: {
-    required: 'financialDriversAdjustedDebtToEquityClosingDateRequired',
-  },
-  adjustedDebtToEquityComment: {
-    required: 'financialDriversAdjustedDebtToEquityCommentRequired',
-  },
-  adjustedDscrIcrClosingDate: {
-    required: 'financialDriversAdjustedDscrIcrClosingDateRequired',
-  },
-  adjustedDscrIcrComment: {
-    required: 'financialDriversAdjustedDscrIcrCommentRequired',
-  },
-};
