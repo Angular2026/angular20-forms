@@ -1,68 +1,64 @@
-readonly hasBr05Error = computed(() => {
-  const isAutoFill = this.isRatingProposedAutoFill();
-  const comment = (this.commentCtrl().value ?? '').trim();
-  const ratingProposed = this.ratingProposedCtrl().value;
+// BR05 / BR06 + AC#8 -> AC#33
+readonly ratingConsistencyResult = computed<RatingValidationResult>(() => {
+  const supportDirection = this.supportDirectionValue();
+  const supportStrength  = this.supportStrengthValue();
+  const hasComment       = this.hasComment();
 
-  return !!ratingProposed && !isAutoFill && !comment;
-});
+  const fail = (): RatingValidationResult => ({
+    severity: hasComment ? 'warning' : 'error',
+    target: 'rating',
+    code: 'supportConsistency',
+  });
+  const ok: RatingValidationResult = { severity: 'none' }; // à adapter à ton type
 
-readonly counterpartyRatingValidatorEffect = effect(() => {
-  const ratingCtrl = this.ratingProposedCtrl();
-  const hasError = this.hasBr05Error();
+  // CR = IR  ⇔  ni meilleur ni pire
+  const isCrEqualIr = !this.isCrBetterThanIr() && !this.isCrWorseThanIr();
 
-  const errors = ratingCtrl.errors ?? {};
-
-  if (hasError) {
-    ratingCtrl.setErrors({
-      ...errors,
-      counterpartyRatingCommentRequired: true,
-    });
-  } else {
-    if (errors['counterpartyRatingCommentRequired']) {
-      const { counterpartyRatingCommentRequired, ...rest } = errors;
-      ratingCtrl.setErrors(Object.keys(rest).length ? rest : null);
+  // ========= Support Direction = NEGATIVE =========
+  if (supportDirection === 'NEGATIVE') {
+    if (supportStrength === 'WEAK') {
+      return isCrEqualIr ? ok : fail();                 // CR = IR
+    }
+    if (supportStrength === 'STRONG' || supportStrength === 'VERY_STRONG') {
+      return this.isCrWorseThanIr() ? ok : fail();      // CR worse than IR
     }
   }
-});
 
-readonly hasBr06Warning = computed(() => {
-  const ratingProposed = this.ratingProposedCtrl().value;
-  const comment = (this.commentCtrl().value ?? '').trim();
+  // ========= Support Direction = POSITIVE =========
+  if (supportDirection === 'POSITIVE') {
+    if (supportStrength === 'UNDETERMINED' || supportStrength === 'WEAK') {
+      return isCrEqualIr ? ok : fail();                 // CR = IR
+    }
 
-  return !!ratingProposed && !this.isRatingProposedAutoFill() && !!comment;
-});
+    if (supportStrength === 'STRONG') {
+      // pré-requis : CR(Support) > IR
+      if (!this.isCrSupportBetterThanIr()) return fail();
 
-readonly counterpartyRatingWarningEffect = effect(() => {
-  const validationTriggered = this.validationInProgress();
+      if (this.isCrSupportBetterThanMrc()) {
+        // CR ∈ [IR, MRC]
+        return this.isCrBetweenIrAndMrc() ? ok : fail();
+      }
+      // CR ∈ [IR, CR(Support)]
+      return this.isCrBetweenIrAndCrSupport() ? ok : fail();
+    }
 
-  if (!validationTriggered) {
-    this.clearCounterpartyRatingWarnings();
-    return;
+    if (supportStrength === 'VERY_STRONG') {
+      if (!this.isCrSupportBetterThanIr()) return fail();
+
+      if (this.isCrSupportBetterThanMrc()) {
+        // CR ∈ [IR, CR(Support)]  ET  CR < geometric_mean(IR, CR(Support))
+        return this.isCrBetweenIrAndCrSupport() && this.isCrBelowGeometricMean()
+          ? ok
+          : fail();
+      }
+      // CR ∈ [IR, CR(Support)]
+      return this.isCrBetweenIrAndCrSupport() ? ok : fail();
+    }
+
+    if (supportStrength === 'ABSOLUTE') {
+      return ok; // CR peut prendre n'importe quelle valeur
+    }
   }
 
-  this.clearCounterpartyRatingWarnings();
-  this.updateCounterpartyRatingWarnings();
+  return ok;
 });
-
-private updateCounterpartyRatingWarnings(): void {
-  const alerts: IAlert[] = [];
-
-  if (this.hasBr06Warning()) {
-    alerts.push({
-      alertTextId: '@@counterpartyRatingConsistencyWarningTopPage',
-      fragmentId: 'pgnnrCounterpartyRating',
-      anchorId: 'counterpartyRatingProposed',
-    });
-  }
-
-  if (alerts.length) {
-    this.workflowValidationService.addWorkflowAlerts('warnings', alerts);
-  }
-}
-
-private clearCounterpartyRatingWarnings(): void {
-  this.workflowValidationService.clearAlertsByFragmentId(
-    'warnings',
-    'pgnnrCounterpartyRating',
-  );
-}
