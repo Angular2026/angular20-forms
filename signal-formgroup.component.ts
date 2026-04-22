@@ -1,35 +1,18 @@
-copyOrRemoveAll() {
-  if (this.copyAllRemoveAllButtonLabel === $localize`:@@copyAllLabel:`) {
-    this.copyCounterPartyRating(true);
-    this.copyIntrinsicRating(true);
-    this.copyRatingSuGrr(true);
-    this.copyLbo(true);
-    this.copyAllRemoveAllButtonLabel = $localize`:@@removeAllLabel:`;
+get nextRatingDateCalculated() {
+  const rawValue: string = this.ccDecisionsForm()
+    .get('ratingCcDecision.nextRatingDateCalculated')
+    ?.getRawValue();
 
-  } else if (this.copyAllRemoveAllButtonLabel === $localize`:@@removeAllLabel:`) {
-    // ❌ Remplacer reset() global qui causait l'erreur et ne vidait pas tout
-    // ✅ setValue(null) individuel sur chaque champ approuvé
-    this.ccDecisionsForm()
-      ?.get('ratingCcDecision.approvedCounterpartyRating')
-      ?.setValue(null);
+  if (!rawValue) return null;
 
-    this.ccDecisionsForm()
-      ?.get('ratingCcDecision.modelSpecificOverrides.approvedIntrinsicRatingCode')
-      ?.setValue(null);
-
-    this.ccDecisionsForm()
-      ?.get('ratingCcDecision.modelSpecificOverrides.approvedSuGrrPercentage')
-      ?.setValue(null);
-
-    this.ccDecisionsForm()
-      ?.get('ratingCcDecision.approvedLboFlag')
-      ?.setValue(null);
-
-    this.ccDecisionsForm()
-      ?.get('ratingCcDecision')
-      ?.updateValueAndValidity();
-
-    this.triggerNextRatingDateComputation();
-    this.copyAllRemoveAllButtonLabel = $localize`:@@copyAllLabel:`;
+  // Format ISO avec tirets (ex: 2026-04-09) → direct
+  if (rawValue.includes('-')) {
+    const date = new Date(rawValue);
+    return isNaN(date.getTime()) ? null : date;
   }
+
+  // Format DD/MM/YYYY → swap day/month pour JS
+  const [day, month, year] = rawValue.split('/');
+  const date = new Date(`${month}/${day}/${year}`); // ✅ MM/DD/YYYY
+  return isNaN(date.getTime()) ? null : date;
 }
