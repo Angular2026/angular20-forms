@@ -1,33 +1,45 @@
 copyCounterPartyRating(forceOverwrite = false) {
   const control = this.ccDecisionsForm()
     ?.get('ratingCcDecision.approvedCounterpartyRating');
-  
-  if (!forceOverwrite && control?.value) {
-    control.reset(); // AC#5 : toggle → efface si déjà rempli
+
+  if (forceOverwrite) {
+    control?.setValue(this.proposedCounterpartyRating());
   } else {
-    control?.setValue(this.proposedCounterpartyRating()); // AC#2 : copie
+    if (control?.value !== this.proposedCounterpartyRating()?.toLocaleUpperCase()) {
+      control?.setValue(this.proposedCounterpartyRating());
+    } else {
+      control?.reset();
+    }
   }
 }
 
 copyIntrinsicRating(forceOverwrite = false) {
   const control = this.ccDecisionsForm()
     ?.get('ratingCcDecision.modelSpecificOverrides.approvedIntrinsicRatingCode');
-  
-  if (!forceOverwrite && control?.value) {
-    control.reset();
-  } else {
+
+  if (forceOverwrite) {
     control?.setValue(this.proposedIntrinsicRating());
+  } else {
+    if (control?.value !== this.proposedIntrinsicRating()?.toLocaleUpperCase()) {
+      control?.setValue(this.proposedIntrinsicRating());
+    } else {
+      control?.reset();
+    }
   }
 }
 
 copyRatingSuGrr(forceOverwrite = false) {
   const control = this.ccDecisionsForm()
     ?.get('ratingCcDecision.modelSpecificOverrides.approvedSuGrrPercentage');
-  
-  if (!forceOverwrite && control?.value) {
-    control.reset();
-  } else {
+
+  if (forceOverwrite) {
     control?.setValue(this.sugrrProposed());
+  } else {
+    if (control?.value !== this.sugrrProposed()) {
+      control?.setValue(this.sugrrProposed());
+    } else {
+      control?.reset();
+    }
   }
 }
 
@@ -36,23 +48,23 @@ copyLbo(forceOverwrite = false) {
 
   const control = this.ccDecisionsForm()
     ?.get('ratingCcDecision.approvedLboFlag');
-  const currentValue = control?.value;
 
-  if (!forceOverwrite && currentValue !== null && currentValue !== undefined) {
-    control?.reset();
-  } else {
+  if (forceOverwrite) {
     control?.setValue(this.proposedLbo() === 'YES');
+  } else {
+    const currentValue = control?.value;
+    const expectedValue = this.proposedLbo() === 'YES';
+    if (currentValue === null || currentValue === undefined) {
+      control?.setValue(expectedValue);
+    } else {
+      control?.reset();
+    }
   }
 }
 
-
-
-
-
-
 copyOrRemoveAll() {
   if (this.copyAllRemoveAllButtonLabel === $localize`:@@copyAllLabel:`) {
-    this.copyCounterPartyRating(true); // force overwrite
+    this.copyCounterPartyRating(true);
     this.copyIntrinsicRating(true);
     this.copyRatingSuGrr(true);
     this.copyLbo(true);
