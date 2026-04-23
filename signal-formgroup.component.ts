@@ -1,21 +1,26 @@
-if (overrides) {
-  const model = this.ccDecision?.ratingCcDecision?.ratingModel;
-  if (model) {
-    this.syncModelSpecificOverrides(model);
+get nextRatingDateCalculated(): string {
+  const rawValue: string = this.ccDecisionsForm()
+    .get('ratingCcDecision.nextRatingDateCalculated')?.getRawValue();
+
+  if (!rawValue) return '';
+
+  let date: Date;
+
+  if (rawValue.includes('-')) {
+    // Format ISO : 2027-04-30
+    date = new Date(rawValue);
+  } else {
+    // Format DD/MM/YYYY
+    const [day, month, year] = rawValue.split('/');
+    date = new Date(`${month}/${day}/${year}`);
   }
 
-  const group = this.ccDecisionsForm
-    .get('ratingCcDecision.modelSpecificOverrides') as FormGroup;
+  if (isNaN(date.getTime())) return '';
 
-  if (group) {
-    Object.keys(overrides).forEach(key => {
-      // ✅ Si le control n'existe pas dans MODEL_SPECIFIC_FIELDS → on le crée quand même
-      if (!group.contains(key)) {
-        console.warn(`Control "${key}" manquant dans MODEL_SPECIFIC_FIELDS pour ${model} → création dynamique`);
-        group.addControl(key, this.formBuilder.control(null));
-      }
-      group.get(key)?.setValue(overrides[key]);
-    });
-    group.updateValueAndValidity();
-  }
+  // ✅ Toujours retourner DD/MM/YYYY
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+
+  return `${dd}/${mm}/${yyyy}`;
 }
