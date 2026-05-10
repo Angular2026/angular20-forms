@@ -264,3 +264,84 @@ describe('PgnnrRatingBlockComponent › ratingConsistencyResult', () => {
     });
   });
 });
+
+
+readonly ratingConsistencyResult = computed<RatingValidationResult>(() => {
+  const supportDirection = this.supportDirectionValue();
+  const supportStrength  = this.supportStrengthValue();
+  const hasComment       = this.hasComment();
+
+  const ok: RatingValidationResult = { severity: 'none', target: 'none', code: null };
+  const fail = (): RatingValidationResult => ({
+    severity: hasComment ? 'warning' : 'error',
+    target: 'rating',
+    code: 'supportConsistency',
+  });
+
+  if (this.ratingProposedValue() === null) return ok;
+
+  if (supportDirection === 'NEGATIVE') return this.validateNegativeConsistency(supportStrength, ok, fail);
+  if (supportDirection === 'POSITIVE') return this.validatePositiveConsistency(supportStrength, ok, fail);
+
+  return ok;
+});
+
+private validateNegativeConsistency(
+  strength: string,
+  ok: RatingValidationResult,
+  fail: () => RatingValidationResult,
+): RatingValidationResult {
+  const isCrEqualIr = !this.isCrBetterThanIr() && !this.isCrWorseThanIr();
+
+  if (strength === 'WEAK')                                 return isCrEqualIr ? ok : fail();
+  if (strength === 'STRONG' || strength === 'VERY_STRONG') return this.isCrWorseThanIr() ? ok : fail();
+
+  return ok;
+}
+
+private validatePositiveConsistency(
+  strength: string,
+  ok: RatingValidationResult,
+  fail: () => RatingValidationResult,
+): RatingValidationResult {
+  const isCrEqualIr = !this.isCrBetterThanIr() && !this.isCrWorseThanIr();
+
+  if (strength === 'UNDETERMINED' || strength === 'WEAK') return isCrEqualIr ? ok : fail();
+  if (strength === 'STRONG')      return this.validatePositiveStrong(ok, fail);
+  if (strength === 'VERY_STRONG') return this.validatePositiveVeryStrong(ok, fail);
+  if (strength === 'ABSOLUTE')    return this.validatePositiveAbsolute(ok, fail);
+
+  return ok;
+}
+
+private validatePositiveStrong(
+  ok: RatingValidationResult,
+  fail: () => RatingValidationResult,
+): RatingValidationResult {
+  if (!this.isCrSupportBetterThanIr()) return fail();
+
+  if (this.isCrSupportBetterThanMrc()) return this.isCrBetweenIrAndMrc() ? ok : fail();           // CR ∈ [IR, MRC]
+  return this.isCrBetweenIrAndCrSupport() ? ok : fail();                                           // CR ∈ [IR, CR(Support)]
+}
+
+private validatePositiveVeryStrong(
+  ok: RatingValidationResult,
+  fail: () => RatingValidationResult,
+): RatingValidationResult {
+  if (!this.isCrSupportBetterThanIr()) return fail();
+
+  if (this.isCrSupportBetterThanMrc()) {
+    // CR ∈ [IR, CR(Support)] ET CR < geometric_mean(IR, CR(Support))
+    return this.isCrBetweenIrAndCrSupport() && this.isCrBelowGeometricMean() ? ok : fail();
+  }
+  return this.isCrBetweenIrAndCrSupport() ? ok : fail(); // CR ∈ [IR, CR(Support)]
+}
+
+private validatePositiveAbsolute(
+  ok: RatingValidationResult,
+  fail: () => RatingValidationResult,
+): RatingValidationResult {
+  if (!this.isCrSupportBetterThanIr()) return fail();
+  if (!this.isCrSupportBetterThanMrc()) return fail();
+  return ok; // CR peut prendre n'importe quelle valeur
+}
