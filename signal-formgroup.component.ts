@@ -1,20 +1,37 @@
-// Sponsor Turnover Closing Date
-const turnoverDateValidators = isCorporate
-  ? [maxMonthsOldValidator('closingDate21Months', 21), ...(hasTurnover ? [Validators.required] : [])]
-  : [];
-c.sponsorTurnoverClosingDate.setValidators(turnoverDateValidators);
-c.sponsorTurnoverClosingDate.updateValueAndValidity({ emitEvent: false });
+export const PROJECT_FINANCE_ALERT_KEYS = {
+  closingDate21MonthsWarning: $localize`:@@closingDate21MonthsWarning:La date d'arrêté saisie dépasse 21 mois - Merci de noter que dans ce cas la pire modalité sera appliquée pour le calcul de la PD.`,
+};
 
-// Adjusted Turnover Closing Date
-const adjustedDateValidators = isCorporate
-  ? [maxMonthsOldValidator('closingDate21Months', 21), ...(hasAdjusted ? [Validators.required] : [])]
-  : [];
-c.adjustedSponsorTurnoverClosingDate.setValidators(adjustedDateValidators);
-c.adjustedSponsorTurnoverClosingDate.updateValueAndValidity({ emitEvent: false });
+private readonly DATE_WARNING_CONTROLS = [
+  'sponsorTurnoverClosingDate',
+  'adjustedSponsorTurnoverClosingDate',
+  'assetsUnderManagementClosingDate',
+] as const;
 
-// AUM Closing Date
-const aumDateValidators = isOther
-  ? [maxMonthsOldValidator('closingDate21Months', 21), ...(hasAUM ? [Validators.required] : [])]
-  : [];
-c.assetsUnderManagementClosingDate.setValidators(aumDateValidators);
-c.assetsUnderManagementClosingDate.updateValueAndValidity({ emitEvent: false });
+
+readonly hasDateWarning = computed(() => {
+  this.formValue(); // dépendance pour relancer le computed sur value changes
+  const c = this.externalSponsorForm.controls;
+  return this.DATE_WARNING_CONTROLS.some(
+    name => !!c[name]?.errors?.['closingDate21Months'],
+  );
+});
+
+readonly dateWarningEffect = effect(() => {
+  this.hasDateWarning(); // dépendance signal
+  this.updateDateWarning();
+});
+
+private updateDateWarning(): void {
+  const c = this.externalSponsorForm.controls;
+
+  const alerts: IAlert[] = this.DATE_WARNING_CONTROLS
+    .filter(name => !!c[name]?.errors?.['closingDate21Months'])
+    .map(name => ({
+      alertTextId: PROJECT_FINANCE_ALERT_KEYS.closingDate21MonthsWarning,
+      fragmentId: 'sponsorEntity',
+      anchorId: name,
+    }));
+
+  this.workflowValidationService.addWorkflowAlerts('warnings', alerts);
+}
