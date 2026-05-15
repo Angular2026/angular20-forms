@@ -1,37 +1,59 @@
-export const PROJECT_FINANCE_ALERT_KEYS = {
-  closingDate21MonthsWarning: $localize`:@@closingDate21MonthsWarning:La date d'arrêté saisie dépasse 21 mois - Merci de noter que dans ce cas la pire modalité sera appliquée pour le calcul de la PD.`,
-};
+constructor() {
+  // ... reste du constructor
 
-private readonly DATE_WARNING_CONTROLS = [
-  'sponsorTurnoverClosingDate',
-  'adjustedSponsorTurnoverClosingDate',
-  'assetsUnderManagementClosingDate',
-] as const;
-
-
-readonly hasDateWarning = computed(() => {
-  this.formValue(); // dépendance pour relancer le computed sur value changes
-  const c = this.externalSponsorForm.controls;
-  return this.DATE_WARNING_CONTROLS.some(
-    name => !!c[name]?.errors?.['closingDate21Months'],
-  );
-});
-
-readonly dateWarningEffect = effect(() => {
-  this.hasDateWarning(); // dépendance signal
-  this.updateDateWarning();
-});
-
-private updateDateWarning(): void {
-  const c = this.externalSponsorForm.controls;
-
-  const alerts: IAlert[] = this.DATE_WARNING_CONTROLS
-    .filter(name => !!c[name]?.errors?.['closingDate21Months'])
-    .map(name => ({
-      alertTextId: PROJECT_FINANCE_ALERT_KEYS.closingDate21MonthsWarning,
-      fragmentId: 'sponsorEntity',
-      anchorId: name,
-    }));
-
-  this.workflowValidationService.addWorkflowAlerts('warnings', alerts);
+  toObservable(this.strengthComputePayload).pipe(
+    filter((p): p is SponsorStrengthComputePayload => p !== null),
+    distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+    debounceTime(300),
+    switchMap(payload => this.counterPartyRatingService.computeSponsorStrength(payload)),
+    takeUntilDestroyed(this.destroyRef$),
+  ).subscribe((response: number) => {
+    this.externalSponsorForm.get('sponsorStrength')?.setValue(
+      this.SPONSOR_STRENGTH_MAP[response] ?? '',
+      { emitEvent: false }, // ← évite la boucle infinie
+    );
+  });
 }
+
+
+
+// Est-ce qu'on a assez de data pour appeler l'API ?
+readonly canComputeStrength = computed(() => {
+  const v = this.formValue();
+  if (!v.sponsorInvolvement) return false;
+
+  // Cas 1 : rating externe renseigné
+  if (v.hasExternalRating === true && v.externalRating) return true;
+
+  // Cas 2 : pas de rating, mais type + currency selon le type
+  if (v.hasExternalRating === false && v.sponsorType) {
+    if (v.sponsorType === 'CORPORATE' && v.sponsorTurnoverCurrency) return true;
+    if (v.sponsorType === 'OTHER' && v.assetsUnderManagementCurrency) return true;
+  }
+  return false;
+});
+
+// Payload mémoisé — ne se recalcule que quand les deps changent
+private readonly strengthComputePayload = computed<SponsorStrengthComputePayload | null>(() => {
+  if (!this.canComputeStrength()) return null;
+  const v = this.formValue();
+  return {
+    rmpmid: null, // external sponsor = pas de RMPM ID
+    crfInternalOrExternalRating: v.externalRating ?? null,
+    sponsorType: v.sponsorType ?? null,
+    sponsorInvolvement: v.sponsorInvolvement,
+    sponsorTurnover: v.sponsorTurnover ?? null,
+    assetsUnderManagement: v.assetsUnderManagement ?? null,
+    currencyCode: v.sponsorType === 'CORPORATE'
+      ? v.sponsorTurnoverCurrency
+      : v.assetsUnderManagementCurrency,
+  };
+});
+
+
+
+private readonly SPONSOR_STRENGTH_MAP: Readonly<Record<number, string>> = {
+  1: 'Strong and Involved',
+  2: 'Strong and Not Involved',
+  3: 'Weak',
+};
