@@ -1,347 +1,78 @@
-import { TestBed } from '@angular/core/testing';
-import { PgnnrRatingBlockComponent } from './pgnnr-rating-block.component';
-import { RatingValidationResult } from '../models/rating-validation-result.model'; // adapte le chemin
+readonly canCompute = computed(() => {
+  const v = this.formValue();
+  if (!v.sponsorInvolvement) return false;
 
-// ─── Résultats attendus ───────────────────────────────────────────
-const OK: RatingValidationResult       = { severity: 'none',    target: 'none',   code: null };
-const FAIL_ERROR: RatingValidationResult  = { severity: 'error',   target: 'rating', code: 'supportConsistency' };
-const FAIL_WARNING: RatingValidationResult = { severity: 'warning', target: 'rating', code: 'supportConsistency' };
+  // Case 1 : rating externe
+  // Déclenche si : externalRating + externalRatingSource renseignés
+  // Ignore : sponsorType, turnover, AUM, currency → pas testés
+  if (v.hasExternalRating === true)
+    return !!v.externalRating && !!v.externalRatingSource;
 
-// ─── Helper ──────────────────────────────────────────────────────
-/**
- * Mock tous les signaux/méthodes du composant utilisés dans ratingConsistencyResult.
- * Les valeurs par défaut représentent un cas "neutre" (pas de rating proposé).
- */
-function mockSignals(
-  component: PgnnrRatingBlockComponent,
-  overrides: {
-    ratingProposedValue?:       unknown;
-    supportDirection?:          string;
-    supportStrength?:           string;
-    hasComment?:                boolean;
-    isCrBetterThanIr?:          boolean;
-    isCrWorseThanIr?:           boolean;
-    isCrSupportBetterThanIr?:   boolean;
-    isCrSupportBetterThanMrc?:  boolean;
-    isCrBetweenIrAndMrc?:       boolean;
-    isCrBetweenIrAndCrSupport?: boolean;
-    isCrBelowGeometricMean?:    boolean;
-  } = {},
-) {
-  const defaults = {
-    ratingProposedValue:       null,
-    supportDirection:          'POSITIVE',
-    supportStrength:           'WEAK',
-    hasComment:                false,
-    isCrBetterThanIr:          false,
-    isCrWorseThanIr:           false,
-    isCrSupportBetterThanIr:   false,
-    isCrSupportBetterThanMrc:  false,
-    isCrBetweenIrAndMrc:       false,
-    isCrBetweenIrAndCrSupport: false,
-    isCrBelowGeometricMean:    false,
-  };
+  // Case 2 : Corporate sans rating
+  // Déclenche si : sponsorTurnoverCurrency renseignée
+  // Ignore : externalRating, AUM, assetsUnderManagementCurrency
+  if (v.hasExternalRating === false && v.sponsorType === 'CORPORATE')
+    return !!v.sponsorTurnoverCurrency;
 
-  const cfg = { ...defaults, ...overrides };
+  // Case 3 : Other sans rating
+  // Déclenche si : assetsUnderManagementCurrency renseignée
+  // Ignore : externalRating, turnover, sponsorTurnoverCurrency
+  if (v.hasExternalRating === false && v.sponsorType === 'OTHER')
+    return !!v.assetsUnderManagementCurrency;
 
-  jest.spyOn(component as any, 'ratingProposedValue').mockReturnValue(cfg.ratingProposedValue);
-  jest.spyOn(component as any, 'supportDirectionValue').mockReturnValue(cfg.supportDirection);
-  jest.spyOn(component as any, 'supportStrengthValue').mockReturnValue(cfg.supportStrength);
-  jest.spyOn(component as any, 'hasComment').mockReturnValue(cfg.hasComment);
-  jest.spyOn(component as any, 'isCrBetterThanIr').mockReturnValue(cfg.isCrBetterThanIr);
-  jest.spyOn(component as any, 'isCrWorseThanIr').mockReturnValue(cfg.isCrWorseThanIr);
-  jest.spyOn(component as any, 'isCrSupportBetterThanIr').mockReturnValue(cfg.isCrSupportBetterThanIr);
-  jest.spyOn(component as any, 'isCrSupportBetterThanMrc').mockReturnValue(cfg.isCrSupportBetterThanMrc);
-  jest.spyOn(component as any, 'isCrBetweenIrAndMrc').mockReturnValue(cfg.isCrBetweenIrAndMrc);
-  jest.spyOn(component as any, 'isCrBetweenIrAndCrSupport').mockReturnValue(cfg.isCrBetweenIrAndCrSupport);
-  jest.spyOn(component as any, 'isCrBelowGeometricMean').mockReturnValue(cfg.isCrBelowGeometricMean);
-}
-
-// ─── Setup ───────────────────────────────────────────────────────
-describe('PgnnrRatingBlockComponent › ratingConsistencyResult', () => {
-  let component: PgnnrRatingBlockComponent;
-
-  beforeEach(() => {
-    TestBed.configureTestingModule({
-      imports: [PgnnrRatingBlockComponent],
-    });
-    component = TestBed.createComponent(PgnnrRatingBlockComponent).componentInstance;
-  });
-
-  afterEach(() => jest.clearAllMocks());
-
-  // ─── Early return ─────────────────────────────────────────────
-  describe('ratingProposedValue === null', () => {
-    it('retourne ok sans vérifier la direction', () => {
-      mockSignals(component, { ratingProposedValue: null });
-      expect(component.ratingConsistencyResult).toEqual(OK);
-    });
-  });
-
-  // ─── Direction inconnue ───────────────────────────────────────
-  describe('direction inconnue', () => {
-    it('retourne ok par défaut', () => {
-      mockSignals(component, { ratingProposedValue: 1, supportDirection: 'UNKNOWN' });
-      expect(component.ratingConsistencyResult).toEqual(OK);
-    });
-  });
-
-  // ─── NEGATIVE ─────────────────────────────────────────────────
-  describe('NEGATIVE', () => {
-    const base = { ratingProposedValue: 1, supportDirection: 'NEGATIVE' };
-
-    describe('WEAK', () => {
-      it('ok si CR = IR', () => {
-        mockSignals(component, { ...base, supportStrength: 'WEAK', isCrBetterThanIr: false, isCrWorseThanIr: false });
-        expect(component.ratingConsistencyResult).toEqual(OK);
-      });
-
-      it('fail(error) si CR ≠ IR et pas de commentaire', () => {
-        mockSignals(component, { ...base, supportStrength: 'WEAK', isCrBetterThanIr: true, isCrWorseThanIr: false, hasComment: false });
-        expect(component.ratingConsistencyResult).toEqual(FAIL_ERROR);
-      });
-
-      it('fail(warning) si CR ≠ IR avec commentaire', () => {
-        mockSignals(component, { ...base, supportStrength: 'WEAK', isCrBetterThanIr: true, hasComment: true });
-        expect(component.ratingConsistencyResult).toEqual(FAIL_WARNING);
-      });
-    });
-
-    describe('STRONG', () => {
-      it('ok si CR worse than IR', () => {
-        mockSignals(component, { ...base, supportStrength: 'STRONG', isCrWorseThanIr: true });
-        expect(component.ratingConsistencyResult).toEqual(OK);
-      });
-
-      it('fail si CR pas worse than IR', () => {
-        mockSignals(component, { ...base, supportStrength: 'STRONG', isCrWorseThanIr: false });
-        expect(component.ratingConsistencyResult).toEqual(FAIL_ERROR);
-      });
-    });
-
-    describe('VERY_STRONG', () => {
-      it('ok si CR worse than IR', () => {
-        mockSignals(component, { ...base, supportStrength: 'VERY_STRONG', isCrWorseThanIr: true });
-        expect(component.ratingConsistencyResult).toEqual(OK);
-      });
-
-      it('fail si CR pas worse than IR', () => {
-        mockSignals(component, { ...base, supportStrength: 'VERY_STRONG', isCrWorseThanIr: false });
-        expect(component.ratingConsistencyResult).toEqual(FAIL_ERROR);
-      });
-    });
-
-    describe('strength inconnue', () => {
-      it('retourne ok par défaut', () => {
-        mockSignals(component, { ...base, supportStrength: 'UNKNOWN' });
-        expect(component.ratingConsistencyResult).toEqual(OK);
-      });
-    });
-  });
-
-  // ─── POSITIVE ─────────────────────────────────────────────────
-  describe('POSITIVE', () => {
-    const base = { ratingProposedValue: 1, supportDirection: 'POSITIVE' };
-
-    describe('UNDETERMINED', () => {
-      it('ok si CR = IR', () => {
-        mockSignals(component, { ...base, supportStrength: 'UNDETERMINED', isCrBetterThanIr: false, isCrWorseThanIr: false });
-        expect(component.ratingConsistencyResult).toEqual(OK);
-      });
-
-      it('fail si CR ≠ IR', () => {
-        mockSignals(component, { ...base, supportStrength: 'UNDETERMINED', isCrBetterThanIr: true });
-        expect(component.ratingConsistencyResult).toEqual(FAIL_ERROR);
-      });
-    });
-
-    describe('WEAK', () => {
-      it('ok si CR = IR', () => {
-        mockSignals(component, { ...base, supportStrength: 'WEAK', isCrBetterThanIr: false, isCrWorseThanIr: false });
-        expect(component.ratingConsistencyResult).toEqual(OK);
-      });
-
-      it('fail si CR ≠ IR', () => {
-        mockSignals(component, { ...base, supportStrength: 'WEAK', isCrWorseThanIr: true });
-        expect(component.ratingConsistencyResult).toEqual(FAIL_ERROR);
-      });
-    });
-
-    describe('STRONG', () => {
-      it('fail si CR(Support) pas mieux que IR (pré-requis)', () => {
-        mockSignals(component, { ...base, supportStrength: 'STRONG', isCrSupportBetterThanIr: false });
-        expect(component.ratingConsistencyResult).toEqual(FAIL_ERROR);
-      });
-
-      it('ok si CR(Support) > MRC et CR ∈ [IR, MRC]', () => {
-        mockSignals(component, { ...base, supportStrength: 'STRONG', isCrSupportBetterThanIr: true, isCrSupportBetterThanMrc: true, isCrBetweenIrAndMrc: true });
-        expect(component.ratingConsistencyResult).toEqual(OK);
-      });
-
-      it('fail si CR(Support) > MRC mais CR ∉ [IR, MRC]', () => {
-        mockSignals(component, { ...base, supportStrength: 'STRONG', isCrSupportBetterThanIr: true, isCrSupportBetterThanMrc: true, isCrBetweenIrAndMrc: false });
-        expect(component.ratingConsistencyResult).toEqual(FAIL_ERROR);
-      });
-
-      it('ok si CR(Support) ≤ MRC et CR ∈ [IR, CR(Support)]', () => {
-        mockSignals(component, { ...base, supportStrength: 'STRONG', isCrSupportBetterThanIr: true, isCrSupportBetterThanMrc: false, isCrBetweenIrAndCrSupport: true });
-        expect(component.ratingConsistencyResult).toEqual(OK);
-      });
-
-      it('fail si CR(Support) ≤ MRC et CR ∉ [IR, CR(Support)]', () => {
-        mockSignals(component, { ...base, supportStrength: 'STRONG', isCrSupportBetterThanIr: true, isCrSupportBetterThanMrc: false, isCrBetweenIrAndCrSupport: false });
-        expect(component.ratingConsistencyResult).toEqual(FAIL_ERROR);
-      });
-    });
-
-    describe('VERY_STRONG', () => {
-      it('fail si CR(Support) pas mieux que IR (pré-requis)', () => {
-        mockSignals(component, { ...base, supportStrength: 'VERY_STRONG', isCrSupportBetterThanIr: false });
-        expect(component.ratingConsistencyResult).toEqual(FAIL_ERROR);
-      });
-
-      it('ok si CR(Support) > MRC et CR ∈ [IR, CR(Support)] ET CR < geometric_mean', () => {
-        mockSignals(component, { ...base, supportStrength: 'VERY_STRONG', isCrSupportBetterThanIr: true, isCrSupportBetterThanMrc: true, isCrBetweenIrAndCrSupport: true, isCrBelowGeometricMean: true });
-        expect(component.ratingConsistencyResult).toEqual(OK);
-      });
-
-      it('fail si CR(Support) > MRC mais CR ∉ [IR, CR(Support)]', () => {
-        mockSignals(component, { ...base, supportStrength: 'VERY_STRONG', isCrSupportBetterThanIr: true, isCrSupportBetterThanMrc: true, isCrBetweenIrAndCrSupport: false, isCrBelowGeometricMean: true });
-        expect(component.ratingConsistencyResult).toEqual(FAIL_ERROR);
-      });
-
-      it('fail si CR(Support) > MRC et CR ∈ [IR, CR(Support)] mais CR ≥ geometric_mean', () => {
-        mockSignals(component, { ...base, supportStrength: 'VERY_STRONG', isCrSupportBetterThanIr: true, isCrSupportBetterThanMrc: true, isCrBetweenIrAndCrSupport: true, isCrBelowGeometricMean: false });
-        expect(component.ratingConsistencyResult).toEqual(FAIL_ERROR);
-      });
-
-      it('ok si CR(Support) ≤ MRC et CR ∈ [IR, CR(Support)]', () => {
-        mockSignals(component, { ...base, supportStrength: 'VERY_STRONG', isCrSupportBetterThanIr: true, isCrSupportBetterThanMrc: false, isCrBetweenIrAndCrSupport: true });
-        expect(component.ratingConsistencyResult).toEqual(OK);
-      });
-
-      it('fail si CR(Support) ≤ MRC et CR ∉ [IR, CR(Support)]', () => {
-        mockSignals(component, { ...base, supportStrength: 'VERY_STRONG', isCrSupportBetterThanIr: true, isCrSupportBetterThanMrc: false, isCrBetweenIrAndCrSupport: false });
-        expect(component.ratingConsistencyResult).toEqual(FAIL_ERROR);
-      });
-    });
-
-    describe('ABSOLUTE', () => {
-      it('fail si CR(Support) pas mieux que IR', () => {
-        mockSignals(component, { ...base, supportStrength: 'ABSOLUTE', isCrSupportBetterThanIr: false });
-        expect(component.ratingConsistencyResult).toEqual(FAIL_ERROR);
-      });
-
-      it('fail si CR(Support) pas mieux que MRC', () => {
-        mockSignals(component, { ...base, supportStrength: 'ABSOLUTE', isCrSupportBetterThanIr: true, isCrSupportBetterThanMrc: false });
-        expect(component.ratingConsistencyResult).toEqual(FAIL_ERROR);
-      });
-
-      it('ok si CR(Support) > IR et CR(Support) > MRC', () => {
-        mockSignals(component, { ...base, supportStrength: 'ABSOLUTE', isCrSupportBetterThanIr: true, isCrSupportBetterThanMrc: true });
-        expect(component.ratingConsistencyResult).toEqual(OK);
-      });
-    });
-
-    describe('strength inconnue', () => {
-      it('retourne ok par défaut', () => {
-        mockSignals(component, { ...base, supportStrength: 'UNKNOWN' });
-        expect(component.ratingConsistencyResult).toEqual(OK);
-      });
-    });
-  });
-
-  // ─── hasComment sur un fail ───────────────────────────────────
-  describe('severity selon hasComment', () => {
-    it('severity = error si hasComment = false', () => {
-      mockSignals(component, { ratingProposedValue: 1, supportDirection: 'NEGATIVE', supportStrength: 'WEAK', isCrBetterThanIr: true, hasComment: false });
-      expect(component.ratingConsistencyResult.severity).toBe('error');
-    });
-
-    it('severity = warning si hasComment = true', () => {
-      mockSignals(component, { ratingProposedValue: 1, supportDirection: 'NEGATIVE', supportStrength: 'WEAK', isCrBetterThanIr: true, hasComment: true });
-      expect(component.ratingConsistencyResult.severity).toBe('warning');
-    });
-  });
+  return false;
 });
 
 
-readonly ratingConsistencyResult = computed<RatingValidationResult>(() => {
-  const supportDirection = this.supportDirectionValue();
-  const supportStrength  = this.supportStrengthValue();
-  const hasComment       = this.hasComment();
+private readonly strengthComputePayload = computed<SponsorStrengthComputePayload | null>(() => {
+  if (!this.canCompute()) return null;
 
-  const ok: RatingValidationResult = { severity: 'none', target: 'none', code: null };
-  const fail = (): RatingValidationResult => ({
-    severity: hasComment ? 'warning' : 'error',
-    target: 'rating',
-    code: 'supportConsistency',
-  });
+  const v = this.formValue();
+  const rmpmId = this.rmpmId();
 
-  if (this.ratingProposedValue() === null) return ok;
-
-  if (supportDirection === 'NEGATIVE') return this.validateNegativeConsistency(supportStrength, ok, fail);
-  if (supportDirection === 'POSITIVE') return this.validatePositiveConsistency(supportStrength, ok, fail);
-
-  return ok;
-});
-
-private validateNegativeConsistency(
-  strength: string,
-  ok: RatingValidationResult,
-  fail: () => RatingValidationResult,
-): RatingValidationResult {
-  const isCrEqualIr = !this.isCrBetterThanIr() && !this.isCrWorseThanIr();
-
-  if (strength === 'WEAK')                                 return isCrEqualIr ? ok : fail();
-  if (strength === 'STRONG' || strength === 'VERY_STRONG') return this.isCrWorseThanIr() ? ok : fail();
-
-  return ok;
-}
-
-private validatePositiveConsistency(
-  strength: string,
-  ok: RatingValidationResult,
-  fail: () => RatingValidationResult,
-): RatingValidationResult {
-  const isCrEqualIr = !this.isCrBetterThanIr() && !this.isCrWorseThanIr();
-
-  if (strength === 'UNDETERMINED' || strength === 'WEAK') return isCrEqualIr ? ok : fail();
-  if (strength === 'STRONG')      return this.validatePositiveStrong(ok, fail);
-  if (strength === 'VERY_STRONG') return this.validatePositiveVeryStrong(ok, fail);
-  if (strength === 'ABSOLUTE')    return this.validatePositiveAbsolute(ok, fail);
-
-  return ok;
-}
-
-private validatePositiveStrong(
-  ok: RatingValidationResult,
-  fail: () => RatingValidationResult,
-): RatingValidationResult {
-  if (!this.isCrSupportBetterThanIr()) return fail();
-
-  if (this.isCrSupportBetterThanMrc()) return this.isCrBetweenIrAndMrc() ? ok : fail();           // CR ∈ [IR, MRC]
-  return this.isCrBetweenIrAndCrSupport() ? ok : fail();                                           // CR ∈ [IR, CR(Support)]
-}
-
-private validatePositiveVeryStrong(
-  ok: RatingValidationResult,
-  fail: () => RatingValidationResult,
-): RatingValidationResult {
-  if (!this.isCrSupportBetterThanIr()) return fail();
-
-  if (this.isCrSupportBetterThanMrc()) {
-    // CR ∈ [IR, CR(Support)] ET CR < geometric_mean(IR, CR(Support))
-    return this.isCrBetweenIrAndCrSupport() && this.isCrBelowGeometricMean() ? ok : fail();
+  // Case 1
+  if (v.hasExternalRating === true) {
+    return {
+      rmpmid:                    rmpmId,
+      crfInternalOrExternalRating: v.externalRating ?? null,
+      sponsorType:               null,
+      sponsorInvolvement:        v.sponsorInvolvement,
+      sponsorTurnover:           null,   // ← null direct, pas String(null)
+      assetsUnderManagement:     null,   // ← null direct, pas String(null)
+      currencyCode:              null,
+    };
   }
-  return this.isCrBetweenIrAndCrSupport() ? ok : fail(); // CR ∈ [IR, CR(Support)]
-}
 
-private validatePositiveAbsolute(
-  ok: RatingValidationResult,
-  fail: () => RatingValidationResult,
-): RatingValidationResult {
-  if (!this.isCrSupportBetterThanIr()) return fail();
-  if (!this.isCrSupportBetterThanMrc()) return fail();
-  return ok; // CR peut prendre n'importe quelle valeur
-}
+  // Case 2 — Corporate
+  if (v.sponsorType === 'CORPORATE') {
+    return {
+      rmpmid:                    rmpmId,
+      crfInternalOrExternalRating: null,
+      sponsorType:               'CORPORATE',
+      sponsorInvolvement:        v.sponsorInvolvement,
+      sponsorTurnover:           v.sponsorTurnover != null ? String(v.sponsorTurnover) : null,
+      assetsUnderManagement:     null,
+      currencyCode:              v.sponsorTurnoverCurrency ?? null,
+    };
+  }
+
+  // Case 3 — Other
+  return {
+    rmpmid:                    rmpmId,
+    crfInternalOrExternalRating: null,
+    sponsorType:               'OTHER',
+    sponsorInvolvement:        v.sponsorInvolvement,
+    sponsorTurnover:           null,
+    assetsUnderManagement:     v.assetsUnderManagement != null ? String(v.assetsUnderManagement) : null,
+    currencyCode:              v.assetsUnderManagementCurrency ?? null,
+  };
+});
+
+
+
+
+
+filter((p): p is SponsorStrengthComputePayload => p !== null),
+distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+debounceTime(300),   // ← si absent, chaque keystroke déclenche un appel
+switchMap(...)
