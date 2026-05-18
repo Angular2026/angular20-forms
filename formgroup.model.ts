@@ -1,95 +1,34 @@
-save
-export interface SponsorEntity {
-  adjustedSponsorTurnover?:                SponsorAmount;
-  adjustedSponsorTurnoverClosingDate?:     Date;
-  adjustedSponsorTurnoverOverrideComment?: string;
-  assetsUnderManagement?:                  SponsorAmount;
-  assetsUnderManagementClosingDate?:       Date;
-  internalRatingDetails?:                  InternalRating;
-  externalRatingDetails?:                  ExternalRating;
-  rmpmIdOfSponsor?:                        string;
-  sponsorIdentifiedWithRmpmId?:            boolean;
-  sponsorInvolvement?:                     string;
-  sponsorStrength?:                        string;
-  sponsorTurnover?:                        SponsorAmount;
-  sponsorTurnoverClosingDate?:             Date;
-  sponsorType?:                            string;
-  externalSponsor?:                        ExternalSponsor; // ← à ajouter
-}
-
-export interface sponsorEntityInfo {
-  adjustedSponsorTurnover:                SponsorAmount;
-  adjustedSponsorTurnoverClosingDate:     Date;
-  adjustedSponsorTurnoverOverrideComment: string;
-  assetsUnderManagement:                  SponsorAmount;
-  assetsUnderManagementClosingDate:       Date;
-  internalRatingDetails:                  InternalRating;
-  externalRatingDetails:                  ExternalRating;
-  rmpmIdOfSponsor:                        SponsorCounterparty;
-  sponsorIdentifiedWithRmpmId:            boolean;
-  sponsorInvolvement:                     string;
-  sponsorStrength:                        string;
-  sponsorTurnover:                        SponsorAmount;
-  sponsorTurnoverClosingDate:             Date;
-  sponsorType:                            string;
-  externalSponsor?:                       ExternalSponsor; // ← à ajouter
+export function isOlderThanMonths(date: unknown, months = 21): boolean {
+  if (!date) return false;
+  const d = new Date(date as string);
+  if (isNaN(d.getTime())) return false;
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - months);
+  return d < cutoff;
 }
 
 
+private updateDateWarning(): void {
+  const c = this.externalSponsorForm.controls;
 
+  // AVANT : filter sur errors?.['closingDate21Months']  ← plus de validator
+  // APRÈS : filter sur la valeur de la date directement
+  const alerts: IAlert[] = this.DATE_WARNING_CONTROLS
+    .filter(name => this.isOlderThan21Months(c[name]?.value))
+    .map(name => ({
+      alertTextId: PROJECT_FINANCE_ALERT_KEYS.closingDate21MonthsWarning,
+      fragmentId:  'counterpartyRating',
+      anchorId:    name,
+    }));
 
-export interface ExternalSponsor {
-  sponsorName?:                           string;
-  hasExternalRating?:                     boolean;
-  commentOnExternalData?:                 string;
-  externalRatingDetails?:                 ExternalRating;
-  sponsorType?:                           string;
-  sponsorTurnover?:                       SponsorAmount;
-  sponsorTurnoverClosingDate?:            Date;
-  adjustedSponsorTurnover?:               SponsorAmount;
-  adjustedSponsorTurnoverClosingDate?:    Date;
-  adjustedSponsorTurnoverOverrideComment?: string;
-  assetsUnderManagement?:                 SponsorAmount;
-  assetsUnderManagementClosingDate?:      Date;
-  sponsorInvolvement?:                    string;
-  sponsorStrength?:                       string;
+  this.workflowValidationService.addWorkflowAlerts('warnings', alerts);
 }
 
 
-public record ExternalSponsorDto(
-    String sponsorName,
-    Boolean hasExternalRating,
-    String commentOnExternalData,
-    SponsorExternalRatingDetailsDto externalRatingDetails,
-    String sponsorType,
-    SponsorMonetaryDto sponsorTurnover,
-    LocalDate sponsorTurnoverClosingDate,
-    SponsorMonetaryDto adjustedSponsorTurnover,
-    LocalDate adjustedSponsorTurnoverClosingDate,
-    String adjustedSponsorTurnoverOverrideComment,
-    SponsorMonetaryDto assetsUnderManagement,
-    LocalDate assetsUnderManagementClosingDate,
-    String sponsorInvolvement,
-    String sponsorStrength
-) {}
-
-
-
-@DomainDrivenDesign.ValueObject
-@Builder(toBuilder = true)
-public record ExternalSponsor(
-    String sponsorName,
-    Boolean hasExternalRating,
-    String commentOnExternalData,
-    SponsorExternalRating externalRatingDetails,
-    String sponsorType,
-    SponsorMonetary sponsorTurnover,
-    LocalDate sponsorTurnoverClosingDate,
-    SponsorMonetary adjustedSponsorTurnover,
-    LocalDate adjustedSponsorTurnoverClosingDate,
-    String adjustedSponsorTurnoverOverrideComment,
-    SponsorMonetary assetsUnderManagement,
-    LocalDate assetsUnderManagementClosingDate,
-    String sponsorInvolvement,
-    String sponsorStrength
-) {}
+readonly hasDateWarning = computed(() => {
+  this.formValue(); // dépendance signal pour re-trigger sur changement
+  const c = this.externalSponsorForm.controls;
+  return this.DATE_WARNING_CONTROLS.some(
+    name => this.isOlderThan21Months(c[name]?.value)
+  );
+});
