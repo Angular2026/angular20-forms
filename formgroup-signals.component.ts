@@ -1,73 +1,45 @@
-<!-- APRÈS -->
-[selectionControl]="$any(eligibilityGroup()?.get('isTreasuryCenterOwnedByBusinessGroup'))"
-(fieldValueChanged)="setSelection($event, 'isTreasuryCenterOwnedByBusinessGroup')"
+// remove: private readonly invalidSubsidiary = (control: AbstractControl) => ({invalidSubsidiary: true});
 
-@if (
-  eligibilityGroup()?.get('isTreasuryCenterOwnedByBusinessGroup')?.errors?.['required']
-)
+private currentSubsidiaryValidator: ValidatorFn | null = null;
 
-@if (eligibilityGroup()?.get('isTreasuryCenterOwnedByBusinessGroup')?.value === false)
-
-@if (eligibilityGroup()?.get('isTreasuryCenterOwnedByBusinessGroup')?.value)
-
-
- // Dans le composant .ts
-protected readonly eligibilityGroup = computed(() =>
-  this.inheritanceForm()?.get(
-    this.currentTypeOfInheritance() ? 'treasuryCentre' : 'subsidiary'
-  ) as FormGroup
-);
-
-
-private initializeFromCurrentSubsidiary(): void {
-  const subsidiary = this.currentSubsidiary();
-  if (!subsidiary) return;
-
-  for (const field of this.fields) {
-    const value = subsidiary.relationOverrides[field];
-    if (value === null || value === undefined) break;
-
-    const control = this.inheritanceForm()?.get(this.getControlPath(field));
-    if (!control) break;
-
-    control.patchValue(value, { emitEvent: false });
-    control.markAsPristine();
-
-    if (value === false) {
-      this.workFlowValidationService.addWorkflowAlerts('errors', [{
-        alertTextId: field + 'Error',
-        anchorId: field,
-        fragmentId: 'counterpartyRating',
-      }]);
-      control.clearValidators();
-      control.addValidators([() => ({ [`${field}Error`]: true })]);
-      control.updateValueAndValidity({ emitEvent: false });
-      break;
-    } else {
-      this.activateRequiredOnNextField(field);
-    }
-  }
+private buildInvalidSubsidiaryValidator(alertTextIds: string[]): ValidatorFn {
+  return (): ValidationErrors | null => {
+    const errors: ValidationErrors = {};
+    alertTextIds.forEach(id => (errors[id] = true));
+    return errors;
+  };
 }
 
 
+if (response.errorsList.length > 0) {
+  this.handlePropagationErrors(selectValue, response);
+  const alertTextIds = response.errorsList.map(error => error.alertTextId);
 
-// AVANT
-this.inheritanceForm()?.get(`subsidiary.${fieldName}`)
-this.inheritanceForm()?.get('subsidiary') as FormGroup
+  response.errorsList.forEach(error => {
+    this.workflowValidationService.addWorkflowAlerts('errors', [
+      {
+        alertTextId: error,
+        anchorId: 'rmpmidForInheritanceSearch',
+        fragmentId: 'counterpartyRating',
+      },
+    ]);
+  });
 
-// APRÈS
-this.inheritanceForm()?.get(this.getControlPath(fieldName))
-this.inheritanceForm()?.get(
-  this.currentTypeOfInheritance() ? 'treasuryCentre' : 'subsidiary'
-) as FormGroup
+  this.isSubsidiaryCounterpartyValidated = false;
+  this.propagationService.updateSubsidiaryEntitySelectionValidity(this.isSubsidiaryCounterpartyValidated);
 
+  this.currentSubsidiaryValidator = this.buildInvalidSubsidiaryValidator(alertTextIds);
+  control.addValidators([this.currentSubsidiaryValidator]);
+  control.updateValueAndValidity();
+} else {
+  this.isSubsidiaryCounterpartyValidated = true;
+  this.propagationService.updateSubsidiaryEntitySelectionValidity(this.isSubsidiaryCounterpartyValidated);
+  // ...selectedSubsidiary payload unchanged...
+  this.setSubsidiaryDetails(selectedSubsidiary);
 
-// ─── Input supplémentaire ───────────────────────────────────────────────────
-currentTypeOfInheritance = input<boolean>();
-
-// ─── Helper : retourne le bon chemin selon le parent ───────────────────────
-private getControlPath(fieldName: string): string {
-  return this.currentTypeOfInheritance()
-    ? `treasuryCentre.${fieldName}`
-    : `subsidiary.${fieldName}`;
+  if (this.currentSubsidiaryValidator) {
+    control.removeValidators([this.currentSubsidiaryValidator]);
+    this.currentSubsidiaryValidator = null;
+    control.updateValueAndValidity();
+  }
 }
