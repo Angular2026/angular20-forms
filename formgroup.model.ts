@@ -1,6 +1,5 @@
-::ng-deep mat-chip-option[disabled] {
+.option-disabled {
   opacity: 0.5 !important;
-  pointer-events: none !important;
-  background-color: rgba(0, 0, 0, 0.08) !important;
-  color: rgba(0, 0, 0, 0.54) !important;
+  background-color: rgba(0, 0, 0, 0.1) !important;
+  cursor: not-allowed !important;
 }
