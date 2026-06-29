@@ -1,131 +1,18 @@
-// Constantes à adapter selon tes valeurs réelles
-const SU_GRR_NOT_SECURED_VALUE = 0.6;   // 60%
-const SU_GRR_SPV_PLEDGED_VALUE = 0;     // 0%
+SELECT business_group_id,
+       COUNT(*) FILTER (WHERE country_of_incorporation_id IS NOT NULL) AS nb_pays_renseigne,
+       COUNT(*) FILTER (WHERE country_of_incorporation_id IS NULL)     AS nb_pays_null
+FROM counterparty_characteristics
+WHERE rmpmid IN (
+    SELECT DISTINCT parent_rmpm_id 
+    FROM counterparty_characteristics 
+    WHERE parent_rmpm_id IS NOT NULL
+)
+GROUP BY business_group_id
+HAVING COUNT(*) FILTER (WHERE country_of_incorporation_id IS NOT NULL) > 0
+   AND COUNT(*) FILTER (WHERE country_of_incorporation_id IS NULL) > 0
+ORDER BY business_group_id;
 
-getSuGrrHlcListForAssetFinance(
-  assetPledge: boolean | null,
-  suGrrComputed: number,
-  fullList: ISelectOption[] // [HLC1, HLC2, HLC3, 60%, 0%]
-): ISelectOption[] {
-
-  // Cas NA : foundation déjà à 60%, pas de notion de pledge -> liste verrouillée à 60 seul
-  if (assetPledge === null && suGrrComputed === SU_GRR_NOT_SECURED_VALUE) {
-    return fullList.filter(item => item.value === SU_GRR_NOT_SECURED_VALUE);
-  }
-
-  // Cas Asset Pledge = Yes, baseline = 0% -> liste complète (60, HLC1, HLC2, HLC3, 0)
-  if (assetPledge === true && suGrrComputed === SU_GRR_SPV_PLEDGED_VALUE) {
-    return fullList;
-  }
-
-  // Cas Asset Pledge = No, baseline = 60% -> liste sans l'option "0% pledged"
-  if (assetPledge === false && suGrrComputed === SU_GRR_NOT_SECURED_VALUE) {
-    return fullList.filter(item => item.value !== SU_GRR_SPV_PLEDGED_VALUE);
-  }
-
-  return fullList; // fallback de sécurité
-}
-
-
-getSuGrrBaselineForAssetFinance(assetPledge: boolean | null): number {
-  if (assetPledge === true) return SU_GRR_SPV_PLEDGED_VALUE; // 0
-  return SU_GRR_NOT_SECURED_VALUE; // 60, pour No et NA
-}
-
-get showSuGrrToken() {
-  return (
-    this.suGrrOverrideValidationStatus === SuGrrOverrideValidationStatus.VALIDATION_IS_NOT_REQUIRED ||
-    this.suGrrOverrideValidationStatus === SuGrrOverrideValidationStatus.VALIDATION_IS_REQUIRED ||
-    (this.modelUsed() === EModelCode.PD_PROJECT_FINANCE &&
-      this.ccDecisionsForm().get('ratingCcDecision.approvedSuGrr')?.value != this.proposedRatingSuGrr?.value) ||
-    (this.modelUsed() === EModelCode.PD_ASSET_FINANCE &&
-      this.ccDecisionsForm().get('ratingCcDecision.approvedSuGrr')?.value !=
-        this.getSuGrrBaselineForAssetFinance(this.assetPledge()))
-  );
-}
-
-getHlcList(suGrrHlcList: IItemList[], suGrrValue?: number): IItemList[] {
-  const suGRRhlc3Value = suGrrHlcList.find(hlc => hlc.label.includes('HLC 3'))?.value;
-
-  if (this.modelUsed() === EModelCode.PD_PROJECT_FINANCE) {
-    if (suGrrValue === suGRRhlc3Value) {
-      return suGrrHlcList.sort((obj1, obj2) => obj2.value - obj1.value).filter(item => item.value...);
-    } else {
-      return suGrrHlcList.sort((obj1, obj2) => obj2.value - obj1.value).filter(item => item.value...);
-    }
-  } else if (this.modelUsed() === EModelCode.PD_ASSET_FINANCE) {
-    const assetPledge = this.workflowDTO()?.counterPartyRating?.suGrrRating?.assetPledge;
-    return this.getSuGrrHlcListForAssetFinance(assetPledge, suGrrValue, suGrrHlcList);
-  } else {
-    return suGrrHlcList.sort((obj1, obj2) => obj2.value - obj1.value);
-  }
-}
-
-
-handleSuGrrOverride(newOverride: boolean) {
-  const approvedSuGrr = this.ccDecisionsForm().get('ratingCcDecision.approvedSuGrr')?.value;
-  const isSameAsProposedOrComputed =
-    approvedSuGrr === this.proposedRatingSuGrr?.value || approvedSuGrr === this.workflowDTO()?.counterPartyRating?.sugrrRating?.sugrrComputed;
-
-  if (approvedSuGrr != null) {
-    if (this.modelUsed() === EModelCode.PD_PROJECT_FINANCE) {
-      if (newOverride) {
-        this.ccDecisionsForm().get('ratingCcDecision.approvedSuGrrOverrideToken')?.setValue(null);
-        this.ccDecisionsForm().get('ratingCcDecision.largeSuGrrOverrideValidated')?.setValue(null);
-        if (!isSameAsProposedOrComputed) {
-          this.addRequiredValidator(['ratingCcDecision.approvedSuGrrOverrideToken', 'decisionComment']);
-        } else {
-          this.removeRequiredValidator(['ratingCcDecision.approvedSuGrrOverrideToken', 'decisionComment']);
-        }
-      }
-      return;
-    }
-
-    // Nouvelle branche Asset Finance
-    if (this.modelUsed() === EModelCode.PD_ASSET_FINANCE) {
-      if (newOverride) {
-        this.ccDecisionsForm().get('ratingCcDecision.approvedSuGrrOverrideToken')?.setValue(null);
-        this.ccDecisionsForm().get('ratingCcDecision.largeSuGrrOverrideValidated')?.setValue(null);
-
-        const assetPledge = this.workflowDTO()?.counterPartyRating?.suGrrRating?.assetPledge;
-        const baseline = this.getSuGrrBaselineForAssetFinance(assetPledge); // 0 si pledge, 60 sinon
-        const isSameAsBaseline = approvedSuGrr === baseline;
-
-        if (!isSameAsBaseline) {
-          this.addRequiredValidator(['ratingCcDecision.approvedSuGrrOverrideToken', 'decisionComment']);
-        } else {
-          this.removeRequiredValidator(['ratingCcDecision.approvedSuGrrOverrideToken', 'decisionComment']);
-        }
-      }
-      return;
-    }
-  }
-
-  this.creditCommitteeDecisionService.handleSuGrrOverride(this.proposedSuGrrOverrideRequest(), this.modelUsed()).subscribe({
-    // ... reste inchangé pour les autres modèles
-  });
-}
-
-get showLargeSuGrrOverrideValidated() {
-  if (this.suGrrOverrideValidationStatus === SuGrrOverrideValidationStatus.VALIDATION_IS_REQUIRED) {
-    return true;
-  }
-
-  if (this.modelUsed() === EModelCode.PD_ASSET_FINANCE) {
-    const approvedSuGrr = this.ccDecisionsForm().get('ratingCcDecision.approvedSuGrr')?.value;
-
-    if (approvedSuGrr == null || approvedSuGrr === this.SuGrrBaselineForAssetFinance) {
-      return false;
-    }
-
-    if (this.assetPledgeForAssetFinance === true) {
-      return true; // baseline 0% -> HLC1, HLC2, HLC3 requièrent tous l'escalation
-    } else {
-      const hlc1Value = this.suGrrHlcList?.find(hlc => hlc.label.includes('HLC 1'))?.value;
-      return approvedSuGrr === hlc1Value; // baseline 60% -> seul HLC1 requiert l'escalation
-    }
-  }
-
-  return false;
-}
-
+SELECT rmpmid, parent_rmpm_id, business_group_id, country_of_incorporation_id
+FROM counterparty_characteristics
+WHERE business_group_id = <ID_TROUVÉ>
+ORDER BY country_of_incorporation_id IS NULL;
