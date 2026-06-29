@@ -29,3 +29,24 @@ WHERE business_group_id = (
     LIMIT 1
 )
 ORDER BY rmpmid;
+
+
+-- 1. Forcer un pays NULL sur un des parents existants du groupe 9
+UPDATE counterparty_characteristics
+   SET country_of_incorporation_id = NULL
+ WHERE rmpmid = '4AAV57013';
+
+-- 2. Créer une entité enfant qui désigne 4AAC57046 comme parent (pays renseigné -> alimente c)
+INSERT INTO counterparty_characteristics (rmpmid, parent_rmpm_id, business_group_id, country_of_incorporation_id)
+VALUES ('4AAZ900001', '4AAC57046', 9, 113);
+
+-- 3. Créer une entité enfant qui désigne 4AAV57013 comme parent (pays NULL -> alimente d)
+INSERT INTO counterparty_characteristics (rmpmid, parent_rmpm_id, business_group_id, country_of_incorporation_id)
+VALUES ('4AAZ900002', '4AAV57013', 9, NULL);
+
+-- 4. Vérification du groupe complet
+SELECT rmpmid, parent_rmpm_id, business_group_id, country_of_incorporation_id
+FROM counterparty_characteristics
+WHERE business_group_id = 9
+ORDER BY rmpmid;
+
