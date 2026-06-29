@@ -105,3 +105,27 @@ handleSuGrrOverride(newOverride: boolean) {
     // ... reste inchangé pour les autres modèles
   });
 }
+
+get showLargeSuGrrOverrideValidated() {
+  if (this.suGrrOverrideValidationStatus === SuGrrOverrideValidationStatus.VALIDATION_IS_REQUIRED) {
+    return true;
+  }
+
+  if (this.modelUsed() === EModelCode.PD_ASSET_FINANCE) {
+    const approvedSuGrr = this.ccDecisionsForm().get('ratingCcDecision.approvedSuGrr')?.value;
+
+    if (approvedSuGrr == null || approvedSuGrr === this.SuGrrBaselineForAssetFinance) {
+      return false;
+    }
+
+    if (this.assetPledgeForAssetFinance === true) {
+      return true; // baseline 0% -> HLC1, HLC2, HLC3 requièrent tous l'escalation
+    } else {
+      const hlc1Value = this.suGrrHlcList?.find(hlc => hlc.label.includes('HLC 1'))?.value;
+      return approvedSuGrr === hlc1Value; // baseline 60% -> seul HLC1 requiert l'escalation
+    }
+  }
+
+  return false;
+}
+
