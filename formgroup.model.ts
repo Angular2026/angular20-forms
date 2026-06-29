@@ -60,3 +60,48 @@ getHlcList(suGrrHlcList: IItemList[], suGrrValue?: number): IItemList[] {
     return suGrrHlcList.sort((obj1, obj2) => obj2.value - obj1.value);
   }
 }
+
+
+handleSuGrrOverride(newOverride: boolean) {
+  const approvedSuGrr = this.ccDecisionsForm().get('ratingCcDecision.approvedSuGrr')?.value;
+  const isSameAsProposedOrComputed =
+    approvedSuGrr === this.proposedRatingSuGrr?.value || approvedSuGrr === this.workflowDTO()?.counterPartyRating?.sugrrRating?.sugrrComputed;
+
+  if (approvedSuGrr != null) {
+    if (this.modelUsed() === EModelCode.PD_PROJECT_FINANCE) {
+      if (newOverride) {
+        this.ccDecisionsForm().get('ratingCcDecision.approvedSuGrrOverrideToken')?.setValue(null);
+        this.ccDecisionsForm().get('ratingCcDecision.largeSuGrrOverrideValidated')?.setValue(null);
+        if (!isSameAsProposedOrComputed) {
+          this.addRequiredValidator(['ratingCcDecision.approvedSuGrrOverrideToken', 'decisionComment']);
+        } else {
+          this.removeRequiredValidator(['ratingCcDecision.approvedSuGrrOverrideToken', 'decisionComment']);
+        }
+      }
+      return;
+    }
+
+    // Nouvelle branche Asset Finance
+    if (this.modelUsed() === EModelCode.PD_ASSET_FINANCE) {
+      if (newOverride) {
+        this.ccDecisionsForm().get('ratingCcDecision.approvedSuGrrOverrideToken')?.setValue(null);
+        this.ccDecisionsForm().get('ratingCcDecision.largeSuGrrOverrideValidated')?.setValue(null);
+
+        const assetPledge = this.workflowDTO()?.counterPartyRating?.suGrrRating?.assetPledge;
+        const baseline = this.getSuGrrBaselineForAssetFinance(assetPledge); // 0 si pledge, 60 sinon
+        const isSameAsBaseline = approvedSuGrr === baseline;
+
+        if (!isSameAsBaseline) {
+          this.addRequiredValidator(['ratingCcDecision.approvedSuGrrOverrideToken', 'decisionComment']);
+        } else {
+          this.removeRequiredValidator(['ratingCcDecision.approvedSuGrrOverrideToken', 'decisionComment']);
+        }
+      }
+      return;
+    }
+  }
+
+  this.creditCommitteeDecisionService.handleSuGrrOverride(this.proposedSuGrrOverrideRequest(), this.modelUsed()).subscribe({
+    // ... reste inchangé pour les autres modèles
+  });
+}
