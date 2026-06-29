@@ -43,3 +43,20 @@ get showSuGrrToken() {
         this.getSuGrrBaselineForAssetFinance(this.assetPledge()))
   );
 }
+
+getHlcList(suGrrHlcList: IItemList[], suGrrValue?: number): IItemList[] {
+  const suGRRhlc3Value = suGrrHlcList.find(hlc => hlc.label.includes('HLC 3'))?.value;
+
+  if (this.modelUsed() === EModelCode.PD_PROJECT_FINANCE) {
+    if (suGrrValue === suGRRhlc3Value) {
+      return suGrrHlcList.sort((obj1, obj2) => obj2.value - obj1.value).filter(item => item.value...);
+    } else {
+      return suGrrHlcList.sort((obj1, obj2) => obj2.value - obj1.value).filter(item => item.value...);
+    }
+  } else if (this.modelUsed() === EModelCode.PD_ASSET_FINANCE) {
+    const assetPledge = this.workflowDTO()?.counterPartyRating?.suGrrRating?.assetPledge;
+    return this.getSuGrrHlcListForAssetFinance(assetPledge, suGrrValue, suGrrHlcList);
+  } else {
+    return suGrrHlcList.sort((obj1, obj2) => obj2.value - obj1.value);
+  }
+}
