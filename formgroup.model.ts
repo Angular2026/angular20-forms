@@ -36,9 +36,16 @@ UPDATE counterparty_characteristics
    SET country_of_incorporation_id = NULL
  WHERE rmpmid = '4AAV57013';
 
--- 2. Créer une entité enfant qui désigne 4AAC57046 comme parent (pays renseigné -> alimente c)
-INSERT INTO counterparty_characteristics (rmpmid, parent_rmpm_id, business_group_id, country_of_incorporation_id)
-VALUES ('4AAZ900001', '4AAC57046', 9, 113);
+INSERT INTO counterparty_characteristics
+(id, rmpmid, parent_rmpm_id, business_group_id, country_of_incorporation_id)
+SELECT COALESCE(MAX(id), 0) + 1, '4AAZ900001', '4AAC57046', 9, 113
+FROM counterparty_characteristics;
+
+INSERT INTO counterparty_characteristics
+(id, rmpmid, parent_rmpm_id, business_group_id, country_of_incorporation_id)
+SELECT COALESCE(MAX(id), 0) + 1, '4AAZ900002', '4AAV57013', 9, NULL
+FROM counterparty_characteristics;
+
 
 -- 3. Créer une entité enfant qui désigne 4AAV57013 comme parent (pays NULL -> alimente d)
 INSERT INTO counterparty_characteristics (rmpmid, parent_rmpm_id, business_group_id, country_of_incorporation_id)
