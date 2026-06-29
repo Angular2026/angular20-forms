@@ -16,3 +16,16 @@ SELECT rmpmid, parent_rmpm_id, business_group_id, country_of_incorporation_id
 FROM counterparty_characteristics
 WHERE business_group_id = <ID_TROUVÉ>
 ORDER BY country_of_incorporation_id IS NULL;
+
+
+SELECT rmpmid, parent_rmpm_id, business_group_id, country_of_incorporation_id
+FROM counterparty_characteristics
+WHERE business_group_id = (
+    SELECT business_group_id 
+    FROM counterparty_characteristics 
+    WHERE business_group_id IS NOT NULL
+    GROUP BY business_group_id 
+    HAVING COUNT(*) >= 3
+    LIMIT 1
+)
+ORDER BY rmpmid;
