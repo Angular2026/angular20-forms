@@ -11,7 +11,63 @@ export type ProjectSector =
   | 'UPSTREAM_OG'
   | 'OTHER';
 
-export type ProjectSubSector = string; // valeurs alignées sur le fichier "List_of_sectors_and_subsectors_03_2026"
+export type ProjectSubSector =
+  // Carbon abatement & alternative solutions
+  | 'CARBON_CAPTURE'
+  | 'CARBON_TRANSPORTATION_STORAGE'
+  // Infrastructure
+  | 'AIRPORT'
+  | 'CAR_PARK'
+  | 'DATA_CENTERS'
+  | 'DISTRICT_HEATING_COOLING'
+  | 'ELECTRICITY_GAS_TRANSMISSION_DISTRIBUTION_NETWORKS'
+  | 'ENERGY_FROM_WASTE_WASTE_TREATMENT'
+  | 'FIBRE'
+  | 'HEALTHCARE'
+  | 'INDUSTRIAL_ENERGY_SERVICES'
+  | 'OTHER_INFRASTRUCTURE'
+  | 'PASSENGER_TRANSPORTATION'
+  | 'PORT'
+  | 'RAILWAY_INFRASTRUCTURE'
+  | 'ROAD_INFRASTRUCTURE'
+  | 'ROLLING_STOCK'
+  | 'SMART_METERS'
+  | 'TELECOM_TOWERS'
+  | 'WATER_TREATMENT_DISTRIBUTION'
+  | 'SOCIAL_INFRASTRUCTURE'
+  // Midstream and downstream energies
+  | 'ADVANCED_BIOFUELS'
+  | 'BIOMETHANE_BIOGAS'
+  | 'HYDROGEN_DERIVATIVES_PRODUCTION'
+  | 'LNG_LIQUEFACTION'
+  | 'REGASIFICATION'
+  | 'OTHER_MIDSTREAM_DOWNSTREAM'
+  | 'PIPELINE'
+  | 'REFINERIES_PETROCHEMICALS'
+  | 'STORAGE'
+  // Power conventional
+  | 'COAL_FIRED'
+  | 'GAS_FIRED'
+  // Power nuclear
+  | 'NUCLEAR_POWER_PRODUCTION'
+  // Power renewables
+  | 'BESS'
+  | 'CSP'
+  | 'OFFSHORE_WIND'
+  | 'ONSHORE_WIND'
+  | 'OTHER_RENEWABLES'
+  | 'SOLAR_PV'
+  | 'BATTERY_ECOSYSTEM'
+  | 'EV_CHARGING'
+  // TMMB
+  | 'METALS_NON_FERROUS_METALLURGY'
+  | 'METALS_NON_FERROUS_ORE_EXTRACTION'
+  | 'METALS_STEEL'
+  | 'TRANSITION_MINERALS'
+  // Upstream O&G
+  | 'UPSTREAM_OG'
+  // Other
+  | 'OTHER';
 
 export const projectSectorOptions: ISelectionOption[] = [
   { label: $localize`:@@sectorCarbonAbatementLabel:Réduction du carbone et solutions alternatives`, value: 'CARBON_ABATEMENT_ALTERNATIVE_SOLUTIONS' as ProjectSector },
