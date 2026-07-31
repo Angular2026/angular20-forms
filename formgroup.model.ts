@@ -1,55 +1,45 @@
-const FRB_AUTHORIZED_MODEL_PREFIXES: string[] = [
-  'PLACM',
-  'PLACH',
-  'PASFM',
-  'PASFH',
-  'PPRFM',
-  'PPRFH',
-  'PGALM',
-  'PSOVD',
-];
-const FRB_AUTHORIZED_EXACT_VALUES: string[] = ['SAVE'];
-
-
-private isSrpAuthorizedForFrb(srp: string): boolean {
-  if (!srp) {
-    return true; // pas de valeur = rien à bloquer, laisse Validators.required gérer ça
-  }
-  return (
-    FRB_AUTHORIZED_EXACT_VALUES.includes(srp) ||
-    FRB_AUTHORIZED_MODEL_PREFIXES.some(prefix => srp.startsWith(prefix))
-  );
-}
-
-checkFrbSrpAuthorization(): void {
-  if (this.ratingPolicySelectionDetails?.frbRatingPerimeter !== 'Y') {
-    return;
-  }
-
-  const srpControl = this.ratingPolicySelectionForm.get('currentSrpUsed');
-  const srpValue = srpControl?.value;
-
-  if (!this.isSrpAuthorizedForFrb(srpValue)) {
-    srpControl.setErrors({ notAuthorizedFrbSrp: true });
-    this.alertsBoxService.addAlerts('errors', [
-      {
-        alertTextId: 'notAuthorizedFrbSrp',
-        fragmentId: 'currentSrpUsed',
-        anchorId: 'currentSrpUsed',
-      },
-    ]);
-  }
-}
-
+private baseFormControlNames: string[] = [];
 
 initRatingPolicySelectionForm() {
   this.addCurrentSRPControl();
+  // snapshot AVANT que le composant enfant n'ajoute ses controls dynamiques
+  this.baseFormControlNames = Object.keys(this.ratingPolicySelectionForm.controls);
+
   if (this.ratingPolicySelectionDetails?.currentSrpUsed) {
     this.changeRatingPolicy(...);
   }
-  this.checkFrbSrpAuthorization(); // ← ajout
   // ... reste inchangé
 }
 
+private deactivateSrpDecisionTree(): void {
+  this.container?.clear();
+  this.componentRef = undefined;
+  this.selectedSRPSummaryComponent = undefined;
 
-"notAuthorizedFrbSrp@@notAuthorizedFrbSrpLabel": "This counterparty belongs to FRB rating perimeter and the selected SRP is not authorized. Please make sure that this counterparty data is up-to-date on FRB side system (for example Turnover, LBO financing identification) or select another SRP."
+  // retire tous les controls dynamiques ajoutés par le composant SRP enfant
+  Object.keys(this.ratingPolicySelectionForm.controls)
+    .filter(name => !this.baseFormControlNames.includes(name))
+    .forEach(name => this.ratingPolicySelectionForm.removeControl(name));
+}
+
+handleLoadingSRPSummaryComponent() {
+  if (this.shouldDeactivateSrpDecisionTree) {
+    this.deactivateSrpDecisionTree();
+    return;
+  }
+
+  this.registry
+    .find(model => model.modelCode === this.modelType)
+    ?.loadComponent()
+    .then(componentRef => {
+      this.selectedSRPSummaryComponent = componentRef;
+      this.loadRequiredComponent();
+    });
+}
+
+get shouldDeactivateSrpDecisionTree(): boolean {
+  return (
+    this.ratingPolicySelectionDetails?.frbRatingPerimeter === 'Y' &&
+    this.isSrpAuthorizedForFrb(this.ratingPolicySelectionDetails?.frbModelCode)
+  );
+}
