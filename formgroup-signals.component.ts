@@ -13,30 +13,31 @@ export class RatingPolicyChoiceComponent implements OnInit, OnDestroy {
   private frbMockService = inject(FrbMockService);
 
   constructor() {
-    // pipeline unique de chargement du composant SRP dynamique
-    // switchMap annule automatiquement toute résolution précédente encore en vol
-    this.srpLoadTrigger$
-      .pipe(
-        switchMap(() => {
-          if (this.shouldDeactivateSrpDecisionTree) {
-            return of(null);
-          }
-          const model = this.registry.find(m => m.modelCode === this.modelType);
-          return model ? from(model.loadComponent()) : of(null);
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe(componentRef => {
+  this.srpLoadTrigger$
+    .pipe(
+      switchMap(() => {
+        console.log('[DEBUG] srpLoadTrigger$ déclenché, shouldDeactivate=', this.shouldDeactivateSrpDecisionTree, 'frbRatingPerimeter=', this.frbRatingPerimeter, 'frbModelCode=', this.frbModelCode); // TODO-DEBUG
         if (this.shouldDeactivateSrpDecisionTree) {
-          this.deactivateSrpDecisionTree();
-          return;
+          return of(null);
         }
-        if (componentRef) {
-          this.selectedSRPSummaryComponent = componentRef;
-          this.loadRequiredComponent();
-        }
-      });
-  }
+        const model = this.registry.find(m => m.modelCode === this.modelType);
+        console.log('[DEBUG] model trouvé dans registry?', !!model, 'modelType=', this.modelType); // TODO-DEBUG
+        return model ? from(model.loadComponent()) : of(null);
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    )
+    .subscribe(componentRef => {
+      console.log('[DEBUG] subscribe résolu, componentRef=', componentRef, 'shouldDeactivate maintenant=', this.shouldDeactivateSrpDecisionTree); // TODO-DEBUG
+      if (this.shouldDeactivateSrpDecisionTree) {
+        this.deactivateSrpDecisionTree();
+        return;
+      }
+      if (componentRef) {
+        this.selectedSRPSummaryComponent = componentRef;
+        this.loadRequiredComponent();
+      }
+    });
+}
 
   // ── Fetch ───────────────────────────────────────────────────
   fetchRatingPolicyDetails() {
