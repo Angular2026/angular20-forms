@@ -1,3 +1,7 @@
+// propriétés de la classe
+private frbRatingPerimeter: string | null = null;
+private frbModelCode: string | null = null;
+
 fetchRatingPolicyDetails() {
   this.workflowService.fetchRatingPolicyDetails(fetchRatingPolicy).subscribe(details => {
     this.ratingPolicySelectionDetails = details;
