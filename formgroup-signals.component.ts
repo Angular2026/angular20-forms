@@ -1,41 +1,65 @@
-// ── Constantes BR04 ──────────────────────────────────────────
-const FRB_AUTHORIZED_MODEL_PREFIXES: string[] = [
-  'PLACM', 'PLACH', 'PASFM', 'PASFH', 'PPRFM', 'PPRFH', 'PGALM', 'PSOVD',
-];
-const FRB_AUTHORIZED_EXACT_VALUES: string[] = ['SAVE'];
-
 export class RatingPolicyChoiceComponent implements OnInit, OnDestroy {
-  // ... propriétés existantes ...
+  // ... propriétés existantes (workflowDTO, rmpmId, etc.) ...
 
-  // ── Propriétés BR02/BR03/BR04 ──────────────────────────────
+  // ── BR02/BR03/BR04 ──────────────────────────────────────────
   private frbRatingPerimeter: string | null = null;
   private frbModelCode: string | null = null;
   private baseFormControlNames: string[] = [];
+  private srpLoadTrigger$ = new Subject<void>();
 
-  // 🔧 TODO-MOCK: repasser à false (ou supprimer) quand le backend sera prêt
+  // 🔧 TODO-MOCK: repasser à false / supprimer quand le backend sera prêt
   private readonly USE_FRB_MOCK = true;
   // TODO-MOCK: retirer cette injection avec le flag ci-dessus
   private frbMockService = inject(FrbMockService);
 
+  constructor() {
+    // pipeline unique de chargement du composant SRP dynamique
+    // switchMap annule automatiquement toute résolution précédente encore en vol
+    this.srpLoadTrigger$
+      .pipe(
+        switchMap(() => {
+          if (this.shouldDeactivateSrpDecisionTree) {
+            return of(null);
+          }
+          const model = this.registry.find(m => m.modelCode === this.modelType);
+          return model ? from(model.loadComponent()) : of(null);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(componentRef => {
+        if (this.shouldDeactivateSrpDecisionTree) {
+          this.deactivateSrpDecisionTree();
+          return;
+        }
+        if (componentRef) {
+          this.selectedSRPSummaryComponent = componentRef;
+          this.loadRequiredComponent();
+        }
+      });
+  }
+
   // ── Fetch ───────────────────────────────────────────────────
   fetchRatingPolicyDetails() {
+    const fetchRatingPolicy: IRatingPolicyData = {
+      encryptedWorkflowUUID: this.workflowDTO().encryptedUUID,
+      salt: this.workflowDTO().salt,
+    };
     this.workflowService.fetchRatingPolicyDetails(fetchRatingPolicy).subscribe(details => {
       this.ratingPolicySelectionDetails = details;
-      this.initRatingPolicySelectionForm();
 
-      // TODO-MOCK: bloc entier à supprimer, garder uniquement le `else`
-      // une fois que `details` contiendra réellement frbRatingPerimeter/frbModelCode
+      // TODO-MOCK: bloc entier à supprimer, garder uniquement le contenu du `else`
       if (this.USE_FRB_MOCK) {
         this.frbMockService.getFrbData().subscribe(frbData => {
           this.frbRatingPerimeter = frbData.frbRatingPerimeter;
           this.frbModelCode = frbData.frbModelCode;
           this.checkFrbSrpAuthorization();
-          this.handleLoadingSRPSummaryComponent();
+          this.initRatingPolicySelectionForm();
         });
       } else {
-        // ✅ code définitif : à garder, adapter les noms de champs une fois confirmés par Partha
+        // ✅ code définitif : adapter les noms de champs une fois confirmés par Partha
         this.frbRatingPerimeter = details?.frbRatingPerimeter ?? null;
         this.frbModelCode = details?.frbModelCode ?? null;
+        this.initRatingPolicySelectionForm();
       }
 
       this.workflowService.refreshPropagationSchemesEligibleValue(this.ratingPolicySelectionDetails?.propagationSchemesEligible);
@@ -67,10 +91,10 @@ export class RatingPolicyChoiceComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ── Change SRP (déclenché par la liste déroulante ou init) ───
+  // ── Change SRP (liste déroulante ou init) ─────────────────────
   changeRatingPolicy(policy) {
     this.resetRatingPolicySelectionFormm(policy);
-    this.captureBaseFormControlNames(); // ✅ re-snapshot après recréation du form
+    this.captureBaseFormControlNames();
     this.triggerRatingPolicyModelChanged(policy);
 
     if (this.registry.find(model => model.modelCode === this.modelType)) {
@@ -84,11 +108,11 @@ export class RatingPolicyChoiceComponent implements OnInit, OnDestroy {
             Validators.compose([Validators.required, Validators.maxLength(this.maxChars())]),
           ],
         });
-        this.captureBaseFormControlNames(); // ✅ re-snapshot, srpOverrideComments devient "de base" ici
+        this.captureBaseFormControlNames();
       }
       this.container.clear();
       this.ratingPolicySelectionDetails = null;
-      // ⚠️ ne PAS remettre frbRatingPerimeter / frbModelCode à null ici (BR02 doit continuer à fonctionner)
+      // ⚠️ ne PAS remettre frbRatingPerimeter / frbModelCode à null ici
     }
 
     this.checkFrbSrpAuthorization();
@@ -110,18 +134,7 @@ export class RatingPolicyChoiceComponent implements OnInit, OnDestroy {
   }
 
   handleLoadingSRPSummaryComponent() {
-    if (this.shouldDeactivateSrpDecisionTree) {
-      this.deactivateSrpDecisionTree();
-      return;
-    }
-
-    this.registry
-      .find(model => model.modelCode === this.modelType)
-      ?.loadComponent()
-      .then(componentRef => {
-        this.selectedSRPSummaryComponent = componentRef;
-        this.loadRequiredComponent();
-      });
+    this.srpLoadTrigger$.next();
   }
 
   private deactivateSrpDecisionTree(): void {
@@ -129,7 +142,6 @@ export class RatingPolicyChoiceComponent implements OnInit, OnDestroy {
     this.componentRef = undefined;
     this.selectedSRPSummaryComponent = undefined;
 
-    // retire tous les controls dynamiques ajoutés par le composant SRP enfant
     Object.keys(this.ratingPolicySelectionForm.controls)
       .filter(name => !this.baseFormControlNames.includes(name))
       .forEach(name => this.ratingPolicySelectionForm.removeControl(name));
@@ -147,12 +159,12 @@ export class RatingPolicyChoiceComponent implements OnInit, OnDestroy {
   }
 
   private checkFrbSrpAuthorization = (): void => {
-    const srpControl = this.ratingPolicySelectionForm.get('currentSrpUsed');
-    const srpValue = srpControl?.value;
-
     if (this.frbRatingPerimeter !== 'Y') {
       return;
     }
+
+    const srpControl = this.ratingPolicySelectionForm.get('currentSrpUsed');
+    const srpValue = srpControl?.value;
 
     if (!this.isSrpAuthorizedForFrb(srpValue)) {
       srpControl.setErrors({ notAuthorizedFrbSrp: true });
@@ -165,32 +177,4 @@ export class RatingPolicyChoiceComponent implements OnInit, OnDestroy {
       ]);
     }
   };
-}
-
-
-
-// ⚠️ TODO-MOCK: FICHIER ENTIÈREMENT TEMPORAIRE
-// À SUPPRIMER quand le backend fournira frbRatingPerimeter / frbModelCode
-// dans la réponse réelle de fetchRatingPolicyDetails (DTO à confirmer avec Partha)
-import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
-import { delay } from 'rxjs/operators';
-
-export interface IFrbMockData {
-  frbRatingPerimeter: string; // 'Y' | 'N'
-  frbModelCode: string;
-}
-
-@Injectable({ providedIn: 'root' })
-export class FrbMockService {
-  // 🔧 TODO-MOCK: change ces valeurs pour tester BR02/BR03/BR04
-  // ex: frbModelCode: 'XXXXX' pour tester le cas "non autorisé" (BR04)
-  private readonly mockData: IFrbMockData = {
-    frbRatingPerimeter: 'Y',
-    frbModelCode: 'PLACM010',
-  };
-
-  getFrbData(): Observable<IFrbMockData> {
-    return of(this.mockData).pipe(delay(200)); // TODO-MOCK: simule la latence réseau
-  }
 }
