@@ -12,6 +12,24 @@ export class RatingPolicyChoiceComponent implements OnInit, OnDestroy {
   // TODO-MOCK: retirer cette injection avec le flag ci-dessus
   private frbMockService = inject(FrbMockService);
 
+  loadRequiredComponent() {
+  console.log('[DEBUG] loadRequiredComponent appelé, va créer le composant dans container'); // TODO-DEBUG
+  this.container?.clear();
+  this.componentRef = this.container?.createComponent(this.selectedSRPSummaryComponent);
+  // ...
+}
+
+  private deactivateSrpDecisionTree(): void {
+  console.log('[DEBUG] deactivateSrpDecisionTree appelé, container=', this.container); // TODO-DEBUG
+  this.container?.clear();
+  // ...
+}
+
+  handleLoadingSRPSummaryComponent() {
+  console.log('[DEBUG] handleLoadingSRPSummaryComponent → next() appelé'); // TODO-DEBUG
+  this.srpLoadTrigger$.next();
+}
+
   constructor() {
   this.srpLoadTrigger$
     .pipe(
