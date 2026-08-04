@@ -1,35 +1,13 @@
-private frbSrpAuthorizedValidator = (control: AbstractControl): ValidationErrors | null => {
-  if (this.frbRatingPerimeter !== 'Y') {
-    return null;
-  }
-  return isSrpAuthorizedForFrb(control.value) ? null : { notAuthorizedFrbSrp: true };
-};
+.subscribe(response => {
+  // refresh new rating in window history
+  this.workflowDTO.update(dto => ({ ...dto, counterPartyRating: response }));
+  const newWorkflow = this.workflowDTO(); // nouvelle référence, propre
 
-private addCurrentSRPControl() {
-  this.ratingPolicySelectionForm.addControl(
-    'currentSrpUsed',
-    new FormControl(
-      { value: this.ratingPolicySelectionDetails?.currentSrpUsed ?? null, disabled: !this.userHaveRightWriterOnRight },
-      Validators.compose([Validators.required, this.frbSrpAuthorizedValidator]),
-    ),
-  );
-  // ...
-}
-
-resetRatingPolicySelectionFormm(policy): void {
-  this.ratingPolicySelectionForm = this.formBuilder.group({
-    currentSrpUsed: [policy, Validators.compose([Validators.required, this.frbSrpAuthorizedValidator])],
+  this.router.navigate([`/counterparty/detail/${this.rmpmId()}/workflows`], {
+    state: newWorkflow,
+    queryParams: { workflowId: newWorkflow.encryptedUUID, category: newWorkflow.category?.map(c => c.value) },
+    onSameUrlNavigation: 'ignore',
   });
-}
-
-private checkFrbSrpAuthorization = (): void => {
-  const srpControl = this.ratingPolicySelectionForm.get('currentSrpUsed');
-  srpControl?.updateValueAndValidity(); // réévalue la chaîne de validateurs, y compris frbSrpAuthorizedValidator
-
-  if (srpControl?.hasError('notAuthorizedFrbSrp')) {
-    srpControl.markAsTouched();
-    this.alertsBoxService.addAlerts('errors', [
-      { alertTextId: 'notAuthorizedFrbSrp', fragmentId: 'specificRatingPolicyChoice', anchorId: 'specificRatingPolicyChoice' },
-    ]);
-  }
-};
+  // clear errors box
+  this.alertsBoxService.setSectionValid('counterpartyRating');
+});
