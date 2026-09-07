@@ -60,3 +60,26 @@ private syncLeafControl(parent: FormGroup, key: string, newControl: AbstractCont
     parent.addControl(key, newControl);
   }
 }
+
+private clearStaleSugrrControls(sugrrGroup: FormGroup): void {
+  if (this.sugrrModel === this.pdLargeSuGrrModel) {
+    // switching TO nested pdLarge: any flat asset-finance leaf controls sitting directly
+    // on sugrrGroup are now stale (not part of pdLarge's shape)
+    const assetFinanceKeys = Object.keys(this.buildAssetFinanceSuGrrForm(false).controls);
+    assetFinanceKeys.forEach(key => this.clearControlValidators(sugrrGroup.get(key)));
+  } else if (this.sugrrModel === this.assetFinanceSuGrrModel) {
+    // switching TO flat assetFinance: pdLarge's nested subgroups are now stale
+    ['sugrrDriver', 'sugrrCompute'].forEach(groupKey => {
+      const group = sugrrGroup.get(groupKey) as FormGroup | null;
+      if (group) {
+        Object.keys(group.controls).forEach(key => this.clearControlValidators(group.get(key)));
+      }
+    });
+  }
+}
+
+private clearControlValidators(control: AbstractControl | null): void {
+  if (!control) { return; }
+  control.clearValidators();
+  control.updateValueAndValidity({ emitEvent: false });
+}
