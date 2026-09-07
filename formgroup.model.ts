@@ -21,3 +21,6 @@ handleSugrrModelChanges() in PdLargeCorpRatingComponent used setControl to repla
 
 Affected files
 pd-large-corp-rating.component.ts (handleSugrrModelChanges, syncSugrrControls, clearStaleSugrrControls)
+
+
+[Regression] SU GRR/GRR form throws "Cannot find control with unspecified name attribute" on obligor type/model change
