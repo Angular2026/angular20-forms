@@ -1,37 +1,62 @@
-Context
-Regression introduced by AER_07272NEXT-3777 (Cross model | Rating PD with Large Corporates + SU GRR/GRR facility with Asset Finance).
+handleSugrrModelChanges() {
+  this.workflowService.sugrrModel$.pipe(takeUntilDestroyed(this.destroyRef$)).subscribe(value => {
+    if (value) {
+      this.previousSugrrModel = this.sugrrModel;
+      this.sugrrModel = value;
 
-Steps to reproduce
-1. Open a counterparty rating using the Large Corporates or Asset Finance model.
-2. Trigger a change on the SU GRR/GRR model (e.g. change obligor type/sub-type, or switch between SuGrr model types).
-3. Observe the console/UI.
+      const sugrrGroup = this.ratingForm.get('sugrrRating') as FormGroup;
 
-Actual result
-Error: Cannot find control with unspecified name attribute
-  at pd-large-corp-rating.component.ts:875
-  at workflow.service.ts:445
+      this.syncSugrrControls(sugrrGroup);
+      this.clearStaleSugrrControls(sugrrGroup);
 
-The sugrrRating form group's controls get out of sync with the template: controls referenced by formControlName in the HTML get removed from the FormGroup when switching obligor type/SuGrr model, causing Angular to throw.
+      sugrrGroup.updateValueAndValidity();
+      this.cdr.detectChanges();
+    }
+  });
+}
 
-Expected result
-Switching obligor type or SuGrr model should update the SU GRR/GRR fields (add new ones, sync values, clear validators for irrelevant ones) without ever removing a control still bound in the template, and without throwing.
+private syncSugrrControls(sugrrGroup: FormGroup): void {
+  if (this.sugrrModel === this.pdLargeSuGrrModel) {
+    const newForm = this.buildPDLargeSuGrrForm(false) as FormGroup;
+    this.syncNestedGroup(sugrrGroup, 'sugrrDriver', newForm.get('sugrrDriver') as FormGroup);
+    this.syncNestedGroup(sugrrGroup, 'sugrrCompute', newForm.get('sugrrCompute') as FormGroup);
+    this.syncLeafControl(sugrrGroup, 'modelName', newForm.get('modelName'));
+  } else if (this.sugrrModel === this.assetFinanceSuGrrModel) {
+    const newForm = this.buildAssetFinanceSuGrrForm(false) as FormGroup;
+    this.syncFlatGroup(sugrrGroup, newForm.controls);
+  }
+}
 
-Root cause
-handleSugrrModelChanges() in PdLargeCorpRatingComponent used setControl to replace the whole sugrrRating subgroup, breaking existing formGroupName/formControlName bindings. Fixed by syncing controls in place (patch value/validators, addControl for new fields, clearValidators for stale ones) instead of swapping or removing control instances.
+/** Adds a nested subgroup if absent, otherwise syncs its children in place. */
+private syncNestedGroup(parent: FormGroup, key: string, newGroup: FormGroup): void {
+  const existing = parent.get(key) as FormGroup | null;
+  if (existing) {
+    this.syncFlatGroup(existing, newGroup.controls);
+  } else {
+    parent.addControl(key, newGroup);
+  }
+}
 
-Affected files
-pd-large-corp-rating.component.ts (handleSugrrModelChanges, syncSugrrControls, clearStaleSugrrControls)
+/** Patches value/validators for existing controls, adds missing ones — never replaces instances. */
+private syncFlatGroup(target: FormGroup, newFields: { [key: string]: AbstractControl }): void {
+  Object.entries(newFields).forEach(([key, control]) => {
+    const existing = target.get(key);
+    if (existing) {
+      existing.setValue(control.value, { emitEvent: false });
+      existing.setValidators(control.validator);
+      existing.updateValueAndValidity({ emitEvent: false });
+    } else {
+      target.addControl(key, control);
+    }
+  });
+}
 
-
-[Regression] SU GRR/GRR form throws "Cannot find control with unspecified name attribute" on obligor type/model change
-
-
-Bonjour [Prénom du PO],
-
-Vu avec Anissa — j'ai créé un ticket bug pour tracer les correctifs que j'ai faits sur le formulaire SU GRR/GRR (régression liée à AER_07272NEXT-3777, ticket cross model Large Corporates + Asset Finance).
-
-Je vais ajouter plus de détails techniques et fonctionnels dans le ticket. Peux-tu l'inclure dans le sprint ? J'ai mis 3 points d'effort.
-
-À noter : ce n'est pas lié aux devs du ticket FRB 3658.
-
-Je te tiens au courant dès que c'est finalisé.
+private syncLeafControl(parent: FormGroup, key: string, newControl: AbstractControl | null): void {
+  if (!newControl) { return; }
+  const existing = parent.get(key);
+  if (existing) {
+    existing.setValue(newControl.value, { emitEvent: false });
+  } else {
+    parent.addControl(key, newControl);
+  }
+}
