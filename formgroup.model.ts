@@ -24,3 +24,14 @@ pd-large-corp-rating.component.ts (handleSugrrModelChanges, syncSugrrControls, c
 
 
 [Regression] SU GRR/GRR form throws "Cannot find control with unspecified name attribute" on obligor type/model change
+
+
+Bonjour [Prénom du PO],
+
+Vu avec Anissa — j'ai créé un ticket bug pour tracer les correctifs que j'ai faits sur le formulaire SU GRR/GRR (régression liée à AER_07272NEXT-3777, ticket cross model Large Corporates + Asset Finance).
+
+Je vais ajouter plus de détails techniques et fonctionnels dans le ticket. Peux-tu l'inclure dans le sprint ? J'ai mis 3 points d'effort.
+
+À noter : ce n'est pas lié aux devs du ticket FRB 3658.
+
+Je te tiens au courant dès que c'est finalisé.
