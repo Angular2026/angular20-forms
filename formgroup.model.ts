@@ -1,60 +1,23 @@
-handleSugrrModelChanges() {
-  this.workflowService.sugrrModel$.pipe(takeUntilDestroyed(this.destroyRef$)).subscribe(value => {
-    if (value) {
-      this.previousSugrrModel = this.sugrrModel;
-      this.sugrrModel = value;
+Context
+Regression introduced by AER_07272NEXT-3777 (Cross model | Rating PD with Large Corporates + SU GRR/GRR facility with Asset Finance).
 
-      const sugrrGroup = this.ratingForm.get('sugrrRating') as FormGroup;
-      const newFields = this.buildSuGrrForm(false).controls;
+Steps to reproduce
+1. Open a counterparty rating using the Large Corporates or Asset Finance model.
+2. Trigger a change on the SU GRR/GRR model (e.g. change obligor type/sub-type, or switch between SuGrr model types).
+3. Observe the console/UI.
 
-      this.syncSugrrControls(sugrrGroup, newFields);
-      this.clearStaleSugrrControls(sugrrGroup, newFields);
+Actual result
+Error: Cannot find control with unspecified name attribute
+  at pd-large-corp-rating.component.ts:875
+  at workflow.service.ts:445
 
-      sugrrGroup.updateValueAndValidity();
-      this.cdr.detectChanges();
-    }
-  });
-}
+The sugrrRating form group's controls get out of sync with the template: controls referenced by formControlName in the HTML get removed from the FormGroup when switching obligor type/SuGrr model, causing Angular to throw.
 
-/**
- * Adds new controls to the group, or updates the value/validators of
- * controls that already exist (never replaces their instance).
- */
-private syncSugrrControls(sugrrGroup: FormGroup, newFields: { [key: string]: AbstractControl }): void {
-  Object.entries(newFields).forEach(([key, control]) => {
-    const existing = sugrrGroup.get(key);
-    if (existing) {
-      existing.setValue(control.value, { emitEvent: false });
-      existing.setValidators(control.validator);
-      existing.updateValueAndValidity({ emitEvent: false });
-    } else {
-      sugrrGroup.addControl(key, control);
-    }
-  });
-}
+Expected result
+Switching obligor type or SuGrr model should update the SU GRR/GRR fields (add new ones, sync values, clear validators for irrelevant ones) without ever removing a control still bound in the template, and without throwing.
 
-/**
- * Resolves the relevant subgroup based on the current SuGrr model type,
- * then strips validators from controls that no longer belong to the
- * new schema (without ever removing the controls themselves).
- */
-private clearStaleSugrrControls(sugrrGroup: FormGroup, newFields: { [key: string]: AbstractControl }): void {
-  let targetGroup: FormGroup = sugrrGroup;
-  let existingKeys: string[] = Object.keys(sugrrGroup.controls);
+Root cause
+handleSugrrModelChanges() in PdLargeCorpRatingComponent used setControl to replace the whole sugrrRating subgroup, breaking existing formGroupName/formControlName bindings. Fixed by syncing controls in place (patch value/validators, addControl for new fields, clearValidators for stale ones) instead of swapping or removing control instances.
 
-  if (this.sugrrModel === this.pdLargeSuGrrModel) {
-    targetGroup = sugrrGroup;
-    existingKeys = Object.keys(sugrrGroup.controls);
-  } else if (this.sugrrModel === this.assetFinanceSuGrrModel) {
-    targetGroup = this.ratingForm.get('sugrrRating.sugrrDriver') as FormGroup;
-    existingKeys = Object.keys(targetGroup.controls);
-  }
-
-  existingKeys.forEach(key => {
-    if (!(key in newFields)) {
-      const stale = targetGroup?.get(key);
-      stale?.clearValidators();
-      stale?.updateValueAndValidity({ emitEvent: false });
-    }
-  });
-}
+Affected files
+pd-large-corp-rating.component.ts (handleSugrrModelChanges, syncSugrrControls, clearStaleSugrrControls)
