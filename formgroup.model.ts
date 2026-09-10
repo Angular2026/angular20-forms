@@ -1,85 +1,59 @@
-handleSugrrModelChanges() {
-  this.workflowService.sugrrModel$.pipe(takeUntilDestroyed(this.destroyRef$)).subscribe(value => {
-    if (value) {
-      this.previousSugrrModel = this.sugrrModel;
-      this.sugrrModel = value;
+private addCurrentSRPControl(): void {
+  const nextValue = this.ratingPolicySelectionDetails?.currentSrpUsed ?? null;
+  const existing = this.ratingPolicySelectionForm.get('currentSrpUsed');
 
-      const sugrrGroup = this.ratingForm.get('sugrrRating') as FormGroup;
-
-      this.syncSugrrControls(sugrrGroup);
-      this.clearStaleSugrrControls(sugrrGroup);
-
-      sugrrGroup.updateValueAndValidity();
-      this.cdr.detectChanges();
-    }
-  });
-}
-
-private syncSugrrControls(sugrrGroup: FormGroup): void {
-  if (this.sugrrModel === this.pdLargeSuGrrModel) {
-    const newForm = this.buildPDLargeSuGrrForm(false) as FormGroup;
-    this.syncNestedGroup(sugrrGroup, 'sugrrDriver', newForm.get('sugrrDriver') as FormGroup);
-    this.syncNestedGroup(sugrrGroup, 'sugrrCompute', newForm.get('sugrrCompute') as FormGroup);
-    this.syncLeafControl(sugrrGroup, 'modelName', newForm.get('modelName'));
-  } else if (this.sugrrModel === this.assetFinanceSuGrrModel) {
-    const newForm = this.buildAssetFinanceSuGrrForm(false) as FormGroup;
-    this.syncFlatGroup(sugrrGroup, newForm.controls);
-  }
-}
-
-/** Adds a nested subgroup if absent, otherwise syncs its children in place. */
-private syncNestedGroup(parent: FormGroup, key: string, newGroup: FormGroup): void {
-  const existing = parent.get(key) as FormGroup | null;
   if (existing) {
-    this.syncFlatGroup(existing, newGroup.controls);
-  } else {
-    parent.addControl(key, newGroup);
-  }
-}
-
-/** Patches value/validators for existing controls, adds missing ones — never replaces instances. */
-private syncFlatGroup(target: FormGroup, newFields: { [key: string]: AbstractControl }): void {
-  Object.entries(newFields).forEach(([key, control]) => {
-    const existing = target.get(key);
-    if (existing) {
-      existing.setValue(control.value, { emitEvent: false });
-      existing.setValidators(control.validator);
-      existing.updateValueAndValidity({ emitEvent: false });
-    } else {
-      target.addControl(key, control);
+    // Le control existe déjà : on ne le recrée pas.
+    // Si la valeur est identique, on ne touche à rien du tout —
+    // sinon on relancerait le validator async pour rien.
+    if (existing.value !== nextValue) {
+      existing.setValue(nextValue, { emitEvent: false });
     }
-  });
-}
+    this.syncCurrentSRPControlDisabledState(existing);
+    return;
+  }
 
-private syncLeafControl(parent: FormGroup, key: string, newControl: AbstractControl | null): void {
-  if (!newControl) { return; }
-  const existing = parent.get(key);
-  if (existing) {
-    existing.setValue(newControl.value, { emitEvent: false });
-  } else {
-    parent.addControl(key, newControl);
+  this.ratingPolicySelectionForm.addControl(
+    'currentSrpUsed',
+    new FormControl(
+      { value: nextValue, disabled: !this.userHaveRightWriterOnRight },
+      Validators.required,
+      this.frbSrpAuthorizedValidator,
+    ),
+    { emitEvent: false },
+  );
+
+  if (nextValue) {
+    this.handleLoadingSRPSummaryComponent();
   }
 }
 
-private clearStaleSugrrControls(sugrrGroup: FormGroup): void {
-  if (this.sugrrModel === this.pdLargeSuGrrModel) {
-    // switching TO nested pdLarge: any flat asset-finance leaf controls sitting directly
-    // on sugrrGroup are now stale (not part of pdLarge's shape)
-    const assetFinanceKeys = Object.keys(this.buildAssetFinanceSuGrrForm(false).controls);
-    assetFinanceKeys.forEach(key => this.clearControlValidators(sugrrGroup.get(key)));
-  } else if (this.sugrrModel === this.assetFinanceSuGrrModel) {
-    // switching TO flat assetFinance: pdLarge's nested subgroups are now stale
-    ['sugrrDriver', 'sugrrCompute'].forEach(groupKey => {
-      const group = sugrrGroup.get(groupKey) as FormGroup | null;
-      if (group) {
-        Object.keys(group.controls).forEach(key => this.clearControlValidators(group.get(key)));
-      }
-    });
+private syncCurrentSRPControlDisabledState(control: AbstractControl): void {
+  const shouldDisable = !this.userHaveRightWriterOnRight;
+  if (shouldDisable && control.enabled) {
+    control.disable({ emitEvent: false });
+  } else if (!shouldDisable && control.disabled) {
+    control.enable({ emitEvent: false });
   }
 }
 
-private clearControlValidators(control: AbstractControl | null): void {
-  if (!control) { return; }
-  control.clearValidators();
-  control.updateValueAndValidity({ emitEvent: false });
-}
+
+private lastValidated: { srp: string; result: ValidationErrors | null } | null = null;
+
+private frbSrpAuthorizedValidator: AsyncValidatorFn = (control) => {
+  const selectedSrp = control.value;
+  if (!selectedSrp) return of(null);
+  if (this.lastValidated?.srp === selectedSrp) return of(this.lastValidated.result);
+
+  return timer(300).pipe(
+    switchMap(() => this.workflowService.validateSrpSelection(this.workflowDTO(), selectedSrp)),
+    map(r => {
+      const result = r.isValid ? null : { notAuthorizedFrbSrp: true };
+      this.lastValidated = { srp: selectedSrp, result };
+      return result;
+    }),
+    take(1)
+  );
+};
+
+
