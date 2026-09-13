@@ -1,59 +1,48 @@
-constructor() {
-  // ... reste du constructor
+private currentBranch(): 'NONE' | 'DEFAULT_REVIEW' | 'BACK_PERFORMING' {
+  // canDefault === false -> comportement historique, identique a DEFAULT_REVIEW
+  if (!this.canDefault()) return 'DEFAULT_REVIEW';
 
-  toObservable(this.strengthComputePayload).pipe(
-    filter((p): p is SponsorStrengthComputePayload => p !== null),
-    distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
-    debounceTime(300),
-    switchMap(payload => this.counterPartyRatingService.computeSponsorStrength(payload)),
-    takeUntilDestroyed(this.destroyRef$),
-  ).subscribe((response: number) => {
-    this.externalSponsorForm.get('sponsorStrength')?.setValue(
-      this.SPONSOR_STRENGTH_MAP[response] ?? '',
-      { emitEvent: false }, // ← évite la boucle infinie
-    );
-  });
+  if (this.savedIsDefault() === true) return 'DEFAULT_REVIEW';
+  if (this.savedIsDefault() === false) return 'BACK_PERFORMING';
+
+  // rien de sauvegarde, mais des donnees de revue existent deja (lignes anterieures
+  // a la colonne is_default) -> on reste sur l'ancien comportement
+  if (this.hasExistingReviewData()) return 'DEFAULT_REVIEW';
+
+  return 'NONE';
 }
 
+private hasExistingReviewData(): boolean {
+  const form = this.defaultClientForm();
+  return !!form.get('decisionMakingCommittee')?.value
+      || !!form.get('committeeDecisionDate')?.value
+      || !!form.get('rating.counterPartyRating')?.value;
+}
 
+private applyRules(): void {
+  const form = this.defaultClientForm();
+  const branch = this.currentBranch();
+  const committee = form.get('decisionMakingCommittee')?.value;
+  const dateControl = form.get('committeeDecisionDate');
 
-// Est-ce qu'on a assez de data pour appeler l'API ?
-readonly canComputeStrength = computed(() => {
-  const v = this.formValue();
-  if (!v.sponsorInvolvement) return false;
+  const isReview = branch === 'DEFAULT_REVIEW';
 
-  // Cas 1 : rating externe renseigné
-  if (v.hasExternalRating === true && v.externalRating) return true;
+  const needsDate = isReview && ['CREDIT_COMMITTEE', 'WATCHLIST_COMMITTEE', 'OTHER'].includes(committee);
+  const needsComment = isReview && committee === 'OTHER';
+  const needsRating = needsDate && !!dateControl?.value && !dateControl?.errors;
 
-  // Cas 2 : pas de rating, mais type + currency selon le type
-  if (v.hasExternalRating === false && v.sponsorType) {
-    if (v.sponsorType === 'CORPORATE' && v.sponsorTurnoverCurrency) return true;
-    if (v.sponsorType === 'OTHER' && v.assetsUnderManagementCurrency) return true;
-  }
-  return false;
-});
+  this.showDefaultingProcess = this.canDefault();
+  this.showBackToPerforming = branch === 'BACK_PERFORMING';
+  this.showDecisionMakingCommittee = isReview;
+  this.showCommitteeRatingDecisionDate = needsDate;
+  this.showCommentAuthorityField = needsComment;
 
-// Payload mémoisé — ne se recalcule que quand les deps changent
-private readonly strengthComputePayload = computed<SponsorStrengthComputePayload | null>(() => {
-  if (!this.canComputeStrength()) return null;
-  const v = this.formValue();
-  return {
-    rmpmid: null, // external sponsor = pas de RMPM ID
-    crfInternalOrExternalRating: v.externalRating ?? null,
-    sponsorType: v.sponsorType ?? null,
-    sponsorInvolvement: v.sponsorInvolvement,
-    sponsorTurnover: v.sponsorTurnover ?? null,
-    assetsUnderManagement: v.assetsUnderManagement ?? null,
-    currencyCode: v.sponsorType === 'CORPORATE'
-      ? v.sponsorTurnoverCurrency
-      : v.assetsUnderManagementCurrency,
-  };
-});
+  this.setRequired(form.get('defaultingProcess'), this.canDefault());
+  this.setRequired(form.get('decisionMakingCommittee'), isReview);
+  this.setRequired(dateControl, needsDate);
+  this.setRequired(form.get('commentAuthority'), needsComment);
+  this.setRequired(form.get('rating.counterPartyRating'), needsRating);
 
+  this.counterpartyRatingVisible.emit(needsRating);
+}
 
-
-private readonly SPONSOR_STRENGTH_MAP: Readonly<Record<number, string>> = {
-  1: 'Strong and Involved',
-  2: 'Strong and Not Involved',
-  3: 'Weak',
-};
