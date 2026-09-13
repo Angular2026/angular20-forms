@@ -1,77 +1,98 @@
-export class WorkflowDefaultCounterpartyBlockComponent {
-  public defaultClientForm = input.required<FormGroup>();
-  public canDefault = input(false);
-  public savedIsDefault = input<boolean | null>(null);
-  public hasManagerRight = input(false);
-  public maxChars = input(500);
+export class WorkflowDefaultCounterpartyBlockComponent implements OnInit {
+  defaultClientForm = input.required<FormGroup>();
+  canDefault = input(false);
+  savedIsDefault = input<boolean | null>(null);
+  hasManagerRight = input(false);
+  maxChars = input(500);
 
-  public counterpartyRatingVisible = output<boolean>();
+  counterpartyRatingVisible = output<boolean>();
 
-  // les valeurs du formulaire, en signals
-  private readonly processValue = toSignal(
-    toObservable(this.defaultClientForm).pipe(
-      switchMap(form => form.get('defaultingProcess')!.valueChanges.pipe(
-        startWith(form.get('defaultingProcess')!.value),
-      )),
-    ),
+  private destroyRef$ = inject(DestroyRef);
+  private authService = inject(AuthService);
+
+  // --- controles
+  readonly processCtrl = computed(
+    () => this.defaultClientForm().get('defaultingProcess') as FormControl<DefaultingProcess | null>,
+  );
+  readonly committeeCtrl = computed(
+    () => this.defaultClientForm().get('decisionMakingCommittee') as FormControl<DecisionMakingCommittee | null>,
+  );
+  readonly decisionDateCtrl = computed(
+    () => this.defaultClientForm().get('committeeDecisionDate') as FormControl<Date | null>,
+  );
+  readonly commentCtrl = computed(
+    () => this.defaultClientForm().get('commentAuthority') as FormControl<string | null>,
+  );
+  readonly ratingCtrl = computed(
+    () => this.defaultClientForm().get('rating.counterPartyRating') as FormControl<string | null>,
   );
 
-  private readonly committeeValue = toSignal(
-    toObservable(this.defaultClientForm).pipe(
-      switchMap(form => form.get('decisionMakingCommittee')!.valueChanges.pipe(
-        startWith(form.get('decisionMakingCommittee')!.value),
-      )),
-    ),
-  );
+  // --- valeurs
+  readonly processValue = signal<DefaultingProcess | null>(null);
+  readonly committeeValue = signal<DecisionMakingCommittee | null>(null);
+  readonly decisionDateValue = signal<Date | null>(null);
 
-  private readonly decisionDateValue = toSignal(
-    toObservable(this.defaultClientForm).pipe(
-      switchMap(form => form.get('committeeDecisionDate')!.valueChanges.pipe(
-        startWith(form.get('committeeDecisionDate')!.value),
-      )),
-    ),
-  );
-
-  protected readonly branch = computed<'NONE' | 'DEFAULT_REVIEW' | 'BACK_PERFORMING'>(() => {
+  // --- regles d'affichage
+  readonly branch = computed<'NONE' | 'DEFAULT_REVIEW' | 'BACK_PERFORMING'>(() => {
     if (!this.canDefault()) return 'DEFAULT_REVIEW';
     if (this.savedIsDefault() === true) return 'DEFAULT_REVIEW';
     if (this.savedIsDefault() === false) return 'BACK_PERFORMING';
     return 'NONE';
   });
 
-  protected readonly showDefaultingProcess = computed(() => this.canDefault());
-  protected readonly showBackToPerforming = computed(() => this.branch() === 'BACK_PERFORMING');
-  protected readonly showDecisionMakingCommittee = computed(() => this.branch() === 'DEFAULT_REVIEW');
+  readonly showDefaultingProcess = computed(() => this.canDefault());
+  readonly showBackToPerforming = computed(() => this.branch() === 'BACK_PERFORMING');
+  readonly showDecisionMakingCommittee = computed(() => this.branch() === 'DEFAULT_REVIEW');
 
-  protected readonly showCommitteeRatingDecisionDate = computed(() =>
-    this.branch() === 'DEFAULT_REVIEW' &&
-    ['CREDIT_COMMITTEE', 'WATCHLIST_COMMITTEE', 'OTHER'].includes(this.committeeValue()),
+  readonly showCommitteeRatingDecisionDate = computed(() =>
+    this.showDecisionMakingCommittee() &&
+    ['CREDIT_COMMITTEE', 'WATCHLIST_COMMITTEE', 'OTHER'].includes(this.committeeValue() as string),
   );
 
-  protected readonly showCommentAuthorityField = computed(() =>
-    this.branch() === 'DEFAULT_REVIEW' && this.committeeValue() === 'OTHER',
+  readonly showCommentAuthorityField = computed(() =>
+    this.showDecisionMakingCommittee() && this.committeeValue() === 'OTHER',
   );
 
-  protected readonly showCounterpartyRating = computed(() => {
-    const dateControl = this.defaultClientForm().get('committeeDecisionDate');
-    return this.showCommitteeRatingDecisionDate()
-      && !!this.decisionDateValue()
-      && !dateControl?.errors;
-  });
+  readonly showCounterpartyRating = computed(() =>
+    this.showCommitteeRatingDecisionDate() &&
+    !!this.decisionDateValue() &&
+    !this.decisionDateCtrl().errors,
+  );
 
   constructor() {
-    // les computed pilotent l'affichage ; cet effect ne fait que
-    // synchroniser les validateurs, qui vivent hors du monde des signals
+    // synchronise les validateurs quand les regles changent
     effect(() => {
-      const form = this.defaultClientForm();
-      this.setRequired(form.get('defaultingProcess'), this.canDefault());
-      this.setRequired(form.get('decisionMakingCommittee'), this.showDecisionMakingCommittee());
-      this.setRequired(form.get('committeeDecisionDate'), this.showCommitteeRatingDecisionDate());
-      this.setRequired(form.get('commentAuthority'), this.showCommentAuthorityField());
-      this.setRequired(form.get('rating.counterPartyRating'), this.showCounterpartyRating());
+      this.setRequired(this.processCtrl(), this.canDefault());
+      this.setRequired(this.committeeCtrl(), this.showDecisionMakingCommittee());
+      this.setRequired(this.decisionDateCtrl(), this.showCommitteeRatingDecisionDate());
+      this.setRequired(this.commentCtrl(), this.showCommentAuthorityField());
+      this.setRequired(this.ratingCtrl(), this.showCounterpartyRating());
 
       this.counterpartyRatingVisible.emit(this.showCounterpartyRating());
     });
+  }
+
+  ngOnInit(): void {
+    this.initFormControls();
+  }
+
+  private initFormControls(): void {
+    this.processCtrl()
+      .valueChanges.pipe(startWith(this.processCtrl().value), takeUntilDestroyed(this.destroyRef$))
+      .subscribe(value => this.processValue.set(value));
+
+    this.committeeCtrl()
+      .valueChanges.pipe(startWith(this.committeeCtrl().value), takeUntilDestroyed(this.destroyRef$))
+      .subscribe(value => this.committeeValue.set(value));
+
+    this.decisionDateCtrl()
+      .valueChanges.pipe(startWith(this.decisionDateCtrl().value), takeUntilDestroyed(this.destroyRef$))
+      .subscribe(value => this.decisionDateValue.set(value));
+  }
+
+  getFormattedAuthenticatedUser(): string {
+    const user = this.authService.authenticatedUser['additionalInformation'];
+    return `${user?.lastName}, ${user?.firstName}`;
   }
 
   private setRequired(control: AbstractControl | null, required: boolean): void {
@@ -85,4 +106,3 @@ export class WorkflowDefaultCounterpartyBlockComponent {
     control.updateValueAndValidity({ emitEvent: false });
   }
 }
-
