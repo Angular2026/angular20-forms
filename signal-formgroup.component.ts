@@ -1,10 +1,7 @@
-@Query("""
-    select dc from DefaultingClient dc
-    left join WorkflowDocument w on w.defaultingClient=dc
-    join WorkflowHistory wh on wh.workflow=w
-    where dc.counterparty.characteristics.rmpmid = :rmpmId
-      and wh.currentState = 'DRAFT'
-    order by dc.id desc
-    limit 1
-""")
-Optional<DefaultingClient> findInDraftStateByRmpmId(@Param("rmpmId") String rmpmId);
+SELECT dc.id, w.encrypted_uuid, wh.current_state, dc.created_timestamp
+FROM defaulting_clients dc
+LEFT JOIN workflow_document w ON w.defaulting_client_id = dc.id
+LEFT JOIN workflow_history wh ON wh.workflow_id = w.id
+WHERE dc.counterparty_id = 72696
+ORDER BY dc.id;
+
