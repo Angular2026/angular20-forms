@@ -1,17 +1,9 @@
-Bonjour Frédéric,
+Salut 👋
 
-Je voulais te prévenir que je suis en arrêt maladie jusqu’au 16 inclus. Je devrais être de retour demain.
+J'ai eu un `NonUniqueResultException` sur `findInDraftStateByRmpmId` : la requête remontait 2 résultats pour la même contrepartie, donc le save plantait.
 
-Petit update sur mon ticket XXXX :
+J'ai mis un `order by dc.id desc` + passage en `List` / `Pageable` avec `.stream().findFirst()` dans l'Impl, pour prendre le plus récent.
 
-* La partie backend est terminée et déjà incluse dans la branche de Widad. Elle est en train de faire les tests, puis ce sera déployé dès qu’elle aura terminé.
-* La partie frontend est déjà mergée, mais elle ne peut pas encore être testée tant que le backend n’est pas déployé.
+Ça me gêne un peu comme fix : on prend le dernier id, ce qui n'est pas vraiment une règle métier. J'ai hésité à filtrer sur le workflow en cours via `encryptedUuid` à la place. Et je me demande aussi d'où viennent ces doublons au départ.
 
-Bonjour Frédéric,
-
-Je voulais te prévenir que je suis en arrêt maladie jusqu’au 16 inclus. Je devrais être de retour demain.
-
-Petit update sur mon ticket XXXX :
-
-* Les développements backend sont terminés. Comme il y a une dépendance avec le ticket de Widad, ils ont été intégrés dans sa branche et seront déployés dès qu’elle aura terminé.
-* La partie frontend est déjà mergée, mais elle ne peut pas encore être testée tant que le backend n’est pas déployé.
+Tu en penses quoi ? Le commit est poussé si tu veux jeter un œil.
