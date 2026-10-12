@@ -1,3 +1,8 @@
+if (defaultRepository.isLastDecisionDeclinedBackToPerforming(rmpmid)) {
+    return CounterpartyDefaultStatus.notInDefault();
+}
+
+
 private boolean isEligibleToBackToPerforming(DefaultingClient defaultingClient) {
     BackToPerforming btp = defaultingClient.getBackToPerforming();
     if (btp == null) {
