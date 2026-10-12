@@ -41,6 +41,7 @@ public boolean isLastDecisionDeclinedBackToPerforming(String rmpmId) {
 if (defaultRepository.isLastDecisionDeclinedBackToPerforming(rmpmid)) {
     return CounterpartyDefaultStatus.notInDefault();
 }
+public record DefaultWorkflowDecision(DefaultingProcessEnum process, String state) {}
 
 
 
