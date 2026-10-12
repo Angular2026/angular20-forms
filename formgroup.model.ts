@@ -1,3 +1,44 @@
+public CounterpartyDefaultStatus getDefaultStatus(String rmpmid) {
+    CounterParty counterParty = repository.findByRmpmId(rmpmid);
+
+    Optional<DefaultingClient> lastApprovedDefaultingClient =
+            defaultRepository.findLatestApprovedByRmpmId(rmpmid);
+
+    if (lastApprovedDefaultingClient.isEmpty()) {
+        return CounterpartyDefaultStatus.of(
+                counterParty.getCharacteristics().getRating(), null, false);
+    }
+
+    DefaultingClient defaultingClient = lastApprovedDefaultingClient.get();
+    LocalDate committeeDecisionDate = defaultingClient.getCommitteeDecisionDate();
+
+    if (isEligibleToBackToPerforming(defaultingClient)) {
+        if (isRatingApprovedAfter(counterParty, committeeDecisionDate)) {
+            // BTP finalized by a new approved rating => the new rating decides
+            return CounterpartyDefaultStatus.of(
+                    counterParty.getCharacteristics().getRating(), committeeDecisionDate, false);
+        }
+        // BTP = Yes, waiting for a new rating WF => stays in default, banner displayed
+        return CounterpartyDefaultStatus.of(
+                defaultingClient.getDefaultCounterpartyRating(), committeeDecisionDate, true);
+    }
+
+    // Existing behaviour (no back-to-performing)
+    return CounterpartyDefaultStatus.of(
+            resolveRatingToUse(counterParty, defaultingClient), committeeDecisionDate, false);
+}
+
+private boolean isRatingApprovedAfter(CounterParty counterParty, LocalDate committeeDecisionDate) {
+    LocalDate rmpmRatingDate = counterParty.getCharacteristics().getRatingDate();
+    return rmpmRatingDate != null
+            && committeeDecisionDate != null
+            && rmpmRatingDate.isAfter(committeeDecisionDate);
+}
+
+
+
+
+
 @Query("""
     select dc.defaultingProcess as process, wh.currentState as state
     from DefaultingClient dc
