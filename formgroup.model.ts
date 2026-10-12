@@ -1,3 +1,16 @@
+@Query("""
+    select dc.defaultingProcess as process, wh.currentState as state
+    from DefaultingClient dc
+    join WorkflowDocument w on w.defaultingClient = dc
+    join WorkflowHistory wh on wh.workflow = w
+    where dc.counterparty.characteristics.rmpmid = :rmpmId
+      and w.categoryRaw = 'DEFAULT'
+      and wh.currentState in ('APPROVED', 'DECLINED')
+    order by wh.modifiedTimestamp desc
+""")
+List<DefaultWorkflowDecision> findDecisionsByRmpmId(@Param("rmpmId") String rmpmId, Pageable pageable);
+
+
 if (defaultRepository.isLastDecisionDeclinedBackToPerforming(rmpmid)) {
     return CounterpartyDefaultStatus.notInDefault();
 }
