@@ -5,8 +5,14 @@ private boolean isEligibleToBackToPerforming(DefaultingClient defaultingClient) 
     }
 
     // Same computation as the "Counterparty is back to performing" field in the Default WF
-    Boolean probationPeriodIsOver = defaultDomainService.isProbationPeriodOver(btp); // adjust name
-    Boolean curePeriodIsOver = defaultDomainService.isCurePeriodOver(btp);           // adjust name
+    Boolean probationPeriodIsOver = defaultDomainService.isProbationPeriodOver(
+            btp.getProbationStartDate(),
+            defaultingClient.getCommitteeDecisionDate());
+
+    Boolean curePeriodIsOver = defaultDomainService.isCurePeriodOver(
+            btp.getApprovedLastForbearanceDate(),
+            btp.getApprovedDateEntryToDefault(),
+            btp.getEndOfGracePeriod());
 
     Boolean backToPerforming = defaultDomainService.isCounterpartyBackToPerforming(
             btp.getMeetExitCriteria(),
