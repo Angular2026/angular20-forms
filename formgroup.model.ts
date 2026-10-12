@@ -3,21 +3,44 @@ private boolean isEligibleToBackToPerforming(DefaultingClient defaultingClient) 
     if (btp == null) {
         return false;
     }
-
-    // Same computation as the "Counterparty is back to performing" field in the Default WF
-    Boolean probationPeriodIsOver = defaultDomainService.isProbationPeriodOver(
-            btp.getProbationStartDate(),
-            defaultingClient.getCommitteeDecisionDate());
-
-    Boolean curePeriodIsOver = defaultDomainService.isCurePeriodOver(
-            btp.getApprovedLastForbearanceDate(),
-            btp.getApprovedDateEntryToDefault(),
-            btp.getEndOfGracePeriod());
-
-    Boolean backToPerforming = defaultDomainService.isCounterpartyBackToPerforming(
-            btp.getMeetExitCriteria(),
-            probationPeriodIsOver,
-            curePeriodIsOver);
-
-    return Boolean.TRUE.equals(backToPerforming); // null (unknown) => not eligible
+    BackToPerformingExitCriteria exitCriteria =
+            defaultDomainService.evaluateExitCriteria(btp, defaultingClient.getCommitteeDecisionDate());
+    return Boolean.TRUE.equals(exitCriteria.getCounterpartyBackToPerforming()); // getter à ajuster
 }
+
+
+@Query("""
+    select new com.bnpparibas.sit.fresh.rds.rds04.crf.back.infrastructure.workflow.defaultclient.DefaultWorkflowDecision(
+        dc.defaultingProcess, wh.currentState)
+    from WorkflowHistory wh
+    join wh.workflow w
+    join w.defaultingClient dc
+    where dc.counterparty.characteristics.rmpmid = :rmpmId
+      and w.categoryRaw = 'DEFAULT'
+      and wh.currentState in ('APPROVED', 'DECLINED')
+    order by wh.modifiedTimestamp desc
+""")
+List<DefaultWorkflowDecision> findDecisionsByRmpmId(@Param("rmpmId") String rmpmId, Pageable pageable);
+
+
+boolean isLastDecisionDeclinedBackToPerforming(String rmpmId);
+
+@Override
+public boolean isLastDecisionDeclinedBackToPerforming(String rmpmId) {
+    return defaultDao.findDecisionsByRmpmId(rmpmId, PageRequest.of(0, 1))
+            .stream()
+            .findFirst()
+            .map(d -> d.process() == DefaultingProcessEnum.BACK_PERFORMING
+                    && "DECLINED".equals(d.state()))
+            .orElse(false);
+}
+
+
+
+// BR: back-to-performing WF declined => leaves default state
+if (defaultRepository.isLastDecisionDeclinedBackToPerforming(rmpmid)) {
+    return CounterpartyDefaultStatus.notInDefault();
+}
+
+
+
