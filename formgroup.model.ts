@@ -1,3 +1,33 @@
+    DefaultingClient defaultingClient = lastApprovedDefaultingClients.get();
+    LocalDate rmpmRatingDate = counterParty.getCharacteristics().getRatingDate();
+    LocalDate committeeDecisionDate = defaultingClient.getCommitteeDecisionDate();
+
+    if (isEligibleToBackToPerforming(defaultingClient)) {
+        boolean ratingApprovedAfterBtp = rmpmRatingDate != null
+                && committeeDecisionDate != null
+                && rmpmRatingDate.isAfter(committeeDecisionDate);
+
+        if (ratingApprovedAfterBtp) {
+            // BTP finalized by a new approved rating => the new rating decides
+            return CounterpartyDefaultStatus.of(
+                    counterParty.getCharacteristics().getRating(), committeeDecisionDate, false);
+        }
+        // BTP = Yes, waiting for a new rating WF => stays in default, banner displayed
+        return CounterpartyDefaultStatus.of(
+                defaultingClient.getDefaultCounterpartyRating(), committeeDecisionDate, true);
+    }
+
+    // Existing behaviour (no back-to-performing)
+    String ratingToUse = (rmpmRatingDate != null && rmpmRatingDate.equals(committeeDecisionDate))
+            ? counterParty.getCharacteristics().getRating()
+            : defaultingClient.getDefaultCounterpartyRating();
+
+    return CounterpartyDefaultStatus.of(ratingToUse, committeeDecisionDate, false);
+}
+
+
+
+
 public CounterpartyDefaultStatus getDefaultStatus(String rmpmid) {
     CounterParty counterParty = repository.findByRmpmId(rmpmid);
 
