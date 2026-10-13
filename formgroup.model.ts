@@ -1,3 +1,9 @@
+log.info("[BTP] lastApprovedDefault id={}, process={}, committeeDecisionDate={}", // TODO REMOVE
+        defaultingClient.getId(), defaultingClient.getDefaultingProcess(), defaultingClient.getCommitteeDecisionDate());
+
+
+
+
 private Optional<BackToPerforming> findLastApprovedBackToPerforming(String rmpmid, DefaultingClient lastApprovedDefault) {
     return defaultRepository.findLatestApprovedBackToPerformingByRmpmId(rmpmid)
             .filter(btpWf -> btpWf.getId().equals(lastApprovedDefault.getId()))
