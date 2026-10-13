@@ -1,3 +1,19 @@
+// TODO REMOVE - debug
+log.info("[BTP] lastApprovedBtp present={}", lastApprovedBtp.isPresent());
+lastApprovedBtp.ifPresent(b -> log.info("[BTP] btpYes={}, approved={}, approvalDate={}",
+        b.getCounterpartyBackToPerforming(), b.isApproved(), b.getApprovalDate()));
+workflowDocumentRepository.findLastApprovedRatingWorkflowByRmpmID(rmpmid)
+        .ifPresentOrElse(
+            wd -> log.info("[BTP] last approved rating WF id={}, created={}", wd.getId(), wd.getCreatedTimestamp()),
+            () -> log.info("[BTP] no approved rating WF found"));
+log.info("[BTP] current rating={}, ratingDate={}, committeeDecisionDate={}",
+        counterParty.getCharacteristics().getRating(),
+        counterParty.getCharacteristics().getRatingDate(),
+        committeeDecisionDate);
+
+
+
+
 console.table(approved.map((wf, i) => ({
   index: i,
   categories: JSON.stringify(wf.category),
