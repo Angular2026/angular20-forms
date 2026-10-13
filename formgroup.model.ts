@@ -1,3 +1,14 @@
+// TODO REMOVE - debug BTP detail
+Optional<DefaultingClient> rawBtpWf = defaultRepository.findLatestApprovedBackToPerformingByRmpmId(rmpmid);
+log.info("[BTP] raw BTP WF present={}", rawBtpWf.isPresent());
+rawBtpWf.ifPresent(dc -> log.info("[BTP] raw dc id={}, process={}, btpNull={}",
+        dc.getId(), dc.getDefaultingProcess(), dc.getBackToPerforming() == null));
+rawBtpWf.map(DefaultingClient::getBackToPerforming).ifPresent(b -> log.info(
+        "[BTP] raw btp approved={}, approvalDate={}, btpYes={}, committeeDecisionDate={}",
+        b.isApproved(), b.getApprovalDate(), b.getCounterpartyBackToPerforming(), committeeDecisionDate));
+
+
+
 // TODO REMOVE - debug
 log.info("[BTP] lastApprovedBtp present={}", lastApprovedBtp.isPresent());
 lastApprovedBtp.ifPresent(b -> log.info("[BTP] btpYes={}, approved={}, approvalDate={}",
