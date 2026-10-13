@@ -1,3 +1,11 @@
+private Optional<BackToPerforming> findLastApprovedBackToPerforming(String rmpmid, DefaultingClient lastApprovedDefault) {
+    return defaultRepository.findLatestApprovedBackToPerformingByRmpmId(rmpmid)
+            .filter(btpWf -> btpWf.getId().equals(lastApprovedDefault.getId()))
+            .map(DefaultingClient::getBackToPerforming)
+            .filter(BackToPerforming::isApproved);
+}
+
+
 // TODO REMOVE - debug BTP detail
 Optional<DefaultingClient> rawBtpWf = defaultRepository.findLatestApprovedBackToPerformingByRmpmId(rmpmid);
 log.info("[BTP] raw BTP WF present={}", rawBtpWf.isPresent());
