@@ -1,3 +1,12 @@
+private Optional<BackToPerforming> findLastApprovedBackToPerforming(String rmpmid) {
+    // TODO: no committee decision date on BTP Default WF yet -> no "newer Default WF" check for now
+    return defaultRepository.findLatestApprovedBackToPerformingByRmpmId(rmpmid)
+            .map(DefaultingClient::getBackToPerforming)
+            .filter(BackToPerforming::isApproved);
+}
+
+
+
 log.info("[BTP] lastApprovedDefault id={}, process={}, committeeDecisionDate={}", // TODO REMOVE
         defaultingClient.getId(), defaultingClient.getDefaultingProcess(), defaultingClient.getCommitteeDecisionDate());
 
