@@ -1,23 +1,21 @@
-if (isEligibleToBackToPerforming(defaultingClient)) {
-    Optional<WorkflowDocument> ratingApprovedAfterBtp =
-            findRatingApprovedAfter(rmpmid, committeeDecisionDate);
+private isBackToPerformingPending(wfList: WorkflowDocument[]): boolean {
+  const approved = wfList.filter(wf => wf.currentState === 'APPROVED');
 
-    if (ratingApprovedAfterBtp.isPresent()) {
-        // BTP finalized by a new approved rating => the new rating decides
-        String newRating = ratingApprovedAfterBtp.get().getCounterPartyRating().getRating(); // getter à adapter
-        return CounterpartyDefaultStatus.of(newRating, committeeDecisionDate, false);
-    }
-    // BTP = Yes, waiting for a new rating WF => stays in default, banner displayed
-    return CounterpartyDefaultStatus.of(
-            defaultingClient.getDefaultCounterpartyRating(), committeeDecisionDate, true);
-}
+  // Last approved Default WF (list sorted most recent first)
+  const defaultIndex = approved.findIndex(wf => wf.defaultingClient != null);
+  if (defaultIndex === -1) {
+    return false;
+  }
 
+  const btpYes = !!approved[defaultIndex].defaultingClient?.backToPerforming?.counterpartyBackToPerforming;
+  if (!btpYes) {
+    return false;
+  }
 
-private Optional<WorkflowDocument> findRatingApprovedAfter(String rmpmid, LocalDate committeeDecisionDate) {
-    if (committeeDecisionDate == null) {
-        return Optional.empty();
-    }
-    return workflowDocumentRepository.findLastApprovedRatingWorkflowByRmpmID(rmpmid)
-            .filter(doc -> !doc.getCreatedTimestamp().toLocalDate()   // getter à adapter
-                    .isBefore(committeeDecisionDate));
+  // A rating WF approved after the Default WF => BTP finalized, banner hidden
+  const ratingApprovedAfter = approved
+    .slice(0, defaultIndex)
+    .some(wf => wf.category?.some((c: any) => c.value === 'RATING'));
+
+  return !ratingApprovedAfter;
 }
