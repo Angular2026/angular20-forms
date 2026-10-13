@@ -1,3 +1,15 @@
+console.table(approved.map((wf, i) => ({
+  index: i,
+  categories: JSON.stringify(wf.category),
+  hasDefaultingClient: wf.defaultingClient != null,
+  btp: wf.defaultingClient?.backToPerforming?.counterpartyBackToPerforming,
+  created: wf.createdTimestamp,
+  modified: wf.modifiedTimestamp,
+})));
+console.log('defaultIndex =', defaultIndex);
+
+
+
 private isBackToPerformingPending(wfList: WorkflowDocument[]): boolean {
   const approved = wfList.filter(wf => wf.currentState === 'APPROVED');
 
