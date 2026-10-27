@@ -1,19 +1,26 @@
-// Legacy = pas de process mais déjà des données de committee
-readonly isLegacyWorkflow = computed(() =>
-  !this.processValue() && !!this.committeeValue()
-);
-
-readonly showDefaultingProcess = computed(() =>
-  this.canDefault() && !this.isLegacyWorkflow()
-);
-
-readonly branch = computed<'NONE' | 'DEFAULT_REVIEW' | 'BACK_PERFORMING'>(() => {
-  if (!this.canDefault() || this.isLegacyWorkflow()) return 'DEFAULT_REVIEW';
-  return this.processValue() ?? 'NONE';
-});
+console.log('form', this.defaultCounterpartyForm,
+  'ctrl', this.defaultCounterpartyForm?.get('defaultingProcess'),
+  'value', JSON.stringify(this.defaultCounterpartyForm?.get('defaultingProcess')?.value));
 
 
-this.processValue.set(this.processCtrl().value);
-this.committeeValue.set(this.committeeCtrl().value);
-this.decisionDateValue.set(this.decisionDateCtrl().value);
-// puis subscribe aux valueChanges
+private isBackPerforming(): boolean {
+  const v = this.defaultCounterpartyForm?.get('defaultingProcess')?.value
+    ?? this.workflowDTO?.defaultingProcess; // fallback si le form n'est pas prêt (nom à adapter)
+  return (v?.code ?? v) === 'BACK_PERFORMING';
+}
+
+
+defaultingProcess = signal<string | null>(null);
+
+onDefaultCounterpartyForm(form: FormGroup) {
+  this.defaultCounterpartyForm = form;
+  const ctrl = form.get('defaultingProcess');
+  this.defaultingProcess.set(ctrl?.value ?? null);
+  ctrl?.valueChanges
+    .pipe(takeUntilDestroyed(this.destroyRef))
+    .subscribe(v => this.defaultingProcess.set(v));
+}  
+
+
+case 'defaultCCDecision':
+  return this.defaultingProcess() !== 'BACK_PERFORMING' && (...);
