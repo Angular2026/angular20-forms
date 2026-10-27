@@ -9,6 +9,11 @@ private isBackPerforming(): boolean {
   return (v?.code ?? v) === 'BACK_PERFORMING';
 }
 
+case 'defaultCCDecision': {
+  const process = this.defaultCounterpartyForm?.get('defaultingProcess')?.value;
+  if (!this.defaultCounterpartyForm) return false; // pas encore chargé
+  return process !== 'BACK_PERFORMING' && ( /* conditions d'état */ );
+}
 
 defaultingProcess = signal<string | null>(null);
 
