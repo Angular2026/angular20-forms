@@ -29,3 +29,10 @@ onDefaultCounterpartyForm(form: FormGroup) {
 
 case 'defaultCCDecision':
   return this.defaultingProcess() !== 'BACK_PERFORMING' && (...);
+
+
+// enfant, dans initDefaultClientForm juste avant l'emit
+console.log('EMIT', this.defaultingClientData?.defaultingProcess, this.defaultClientForm);
+
+// parent, dans onDefaultCounterpartyForm
+console.log('RECU', form.get('defaultingProcess')?.value, form);
