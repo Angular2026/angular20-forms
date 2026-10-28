@@ -1,22 +1,30 @@
 case 'DISPLAY_DIALOG':
   this.saveForm();
   this.checkWorkflowErrors();
-  this.workflowValidationService.isSaving$.pipe(
-    filter(saving => !saving),
+  this.workflowValidationService.workflowSaveIsProcessing.pipe(
+    filter(isProcessing => !isProcessing),
     take(1),
     takeUntilDestroyed(this.destroyRef)
   ).subscribe(() => this.displayDialog());
   break;
 
-private pendingSaves = 0;
-private readonly saving$ = new BehaviorSubject<boolean>(false);
-readonly isSaving$ = this.saving$.asObservable();
 
-startWorkflowSavingProcess() {
-  this.pendingSaves++;
-  this.saving$.next(true);
+// dans le service
+get isSaving(): boolean {
+  return this.counter > 0;
 }
-endWorkflowSavingProcess() {
-  this.pendingSaves = Math.max(0, this.pendingSaves - 1);
-  if (this.pendingSaves === 0) this.saving$.next(false);
-}
+
+// dans actionOnRating
+case 'DISPLAY_DIALOG':
+  this.saveForm();
+  this.checkWorkflowErrors();
+  if (!this.workflowValidationService.isSaving) {
+    this.displayDialog();               // aucun save lancé
+  } else {
+    this.workflowValidationService.workflowSaveIsProcessing.pipe(
+      filter(isProcessing => !isProcessing),
+      take(1),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => this.displayDialog());
+  }
+  break;
