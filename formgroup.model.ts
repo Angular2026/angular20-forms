@@ -1,38 +1,22 @@
-console.log('form', this.defaultCounterpartyForm,
-  'ctrl', this.defaultCounterpartyForm?.get('defaultingProcess'),
-  'value', JSON.stringify(this.defaultCounterpartyForm?.get('defaultingProcess')?.value));
+case 'DISPLAY_DIALOG':
+  this.saveForm();
+  this.checkWorkflowErrors();
+  this.workflowValidationService.isSaving$.pipe(
+    filter(saving => !saving),
+    take(1),
+    takeUntilDestroyed(this.destroyRef)
+  ).subscribe(() => this.displayDialog());
+  break;
 
+private pendingSaves = 0;
+private readonly saving$ = new BehaviorSubject<boolean>(false);
+readonly isSaving$ = this.saving$.asObservable();
 
-private isBackPerforming(): boolean {
-  const v = this.defaultCounterpartyForm?.get('defaultingProcess')?.value
-    ?? this.workflowDTO?.defaultingProcess; // fallback si le form n'est pas prêt (nom à adapter)
-  return (v?.code ?? v) === 'BACK_PERFORMING';
+startWorkflowSavingProcess() {
+  this.pendingSaves++;
+  this.saving$.next(true);
 }
-
-case 'defaultCCDecision': {
-  const process = this.defaultCounterpartyForm?.get('defaultingProcess')?.value;
-  if (!this.defaultCounterpartyForm) return false; // pas encore chargé
-  return process !== 'BACK_PERFORMING' && ( /* conditions d'état */ );
+endWorkflowSavingProcess() {
+  this.pendingSaves = Math.max(0, this.pendingSaves - 1);
+  if (this.pendingSaves === 0) this.saving$.next(false);
 }
-
-defaultingProcess = signal<string | null>(null);
-
-onDefaultCounterpartyForm(form: FormGroup) {
-  this.defaultCounterpartyForm = form;
-  const ctrl = form.get('defaultingProcess');
-  this.defaultingProcess.set(ctrl?.value ?? null);
-  ctrl?.valueChanges
-    .pipe(takeUntilDestroyed(this.destroyRef))
-    .subscribe(v => this.defaultingProcess.set(v));
-}  
-
-
-case 'defaultCCDecision':
-  return this.defaultingProcess() !== 'BACK_PERFORMING' && (...);
-
-
-// enfant, dans initDefaultClientForm juste avant l'emit
-console.log('EMIT', this.defaultingClientData?.defaultingProcess, this.defaultClientForm);
-
-// parent, dans onDefaultCounterpartyForm
-console.log('RECU', form.get('defaultingProcess')?.value, form);
