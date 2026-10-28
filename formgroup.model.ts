@@ -1,1 +1,1 @@
-counter was already there before this MR (used by startWorkflowSavingProcess / endWorkflowSavingProcess); I only added the isSaving getter on top of it. Since it's a small, local change, I renamed it to pendingSavesCount in this MR to make the intent clear.
+take(1) is the standard RxJS operator for "first emission then unsubscribe", not a magic number. 
