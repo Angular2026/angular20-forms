@@ -6,3 +6,13 @@ console.log('[BR06]', {
   allDefaultWorkflowsAreClosed,
   allDeferralWorkflowsAreClosed,
 });
+
+
+console.log('[BR06] extra', {
+  hasWriterOnRating: this.userRightsService.hasUserRight([this.userRight.WRITER_ON_RATING]),
+  isCounterpartyInDefault: this.isCounterpartyInDefault,
+  counterpartyBackToPerforming: this.counterpartyBackToPerforming,
+  hasDefaultRestrictionError: this.hasDefaultRestrictionError,
+});
+
+console.log('[BR06] isEligible', isEligible);
