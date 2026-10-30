@@ -19,3 +19,7 @@ case 'DISPLAY_DIALOG': {
   }
   break;
 }
+
+this.workflowValidationService.workflowSaveIsProcessing
+  .pipe(take(4))
+  .subscribe(v => console.log('[SAVE] processing', v));
