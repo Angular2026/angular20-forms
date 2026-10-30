@@ -1,18 +1,31 @@
-console.log('[BR06]', {
-  selected: this.selectedCategoryValue,
-  defaultStates: defaultDocs.map(d => d.currentState),
-  deferralStates: deferralDocs.map(d => d.currentState),
-  DEFAULT_CLOSED_STATES: this.DEFAULT_CLOSED_STATES,
-  allDefaultWorkflowsAreClosed,
-  allDeferralWorkflowsAreClosed,
-});
+case 'DISPLAY_DIALOG': {
+  this.checkWorkflowErrors();
+  const saved$ = this.workflowValidationService.workflowSaveResult$.pipe(
+    take(1),
+    takeUntilDestroyed(this.destroyRef),
+  );
+  saved$.subscribe(success => { if (success) this.displayDialog(); });
+
+  if (!this.saveForm()) {
+    this.displayDialog(); // nothing to save in this state
+  }
+  break;
+}
 
 
-console.log('[BR06] extra', {
-  hasWriterOnRating: this.userRightsService.hasUserRight([this.userRight.WRITER_ON_RATING]),
-  isCounterpartyInDefault: this.isCounterpartyInDefault,
-  counterpartyBackToPerforming: this.counterpartyBackToPerforming,
-  hasDefaultRestrictionError: this.hasDefaultRestrictionError,
-});
 
-console.log('[BR06] isEligible', isEligible);
+saveForm(): boolean {
+  this.alertsBoxService.clearAllAlerts();
+  this.applyCounterpartyDefaultRestriction();
+  let saveTriggered = false;
+  if (this.isWorkflowTypeBothRatingAndFacility) { this.saveGroupedRating(); saveTriggered = true; }
+  // ... same for each branch that calls a trigger
+  return saveTriggered;
+}
+
+private workflowSaveResultSubject = new Subject<boolean>(); // true = saved, false = error
+workflowSaveResult$ = this.workflowSaveResultSubject.asObservable();
+
+notifyWorkflowSaved(success: boolean): void {
+  this.workflowSaveResultSubject.next(success);
+}
