@@ -1,31 +1,21 @@
 case 'DISPLAY_DIALOG': {
-  this.checkWorkflowErrors();
-  const saved$ = this.workflowValidationService.workflowSaveResult$.pipe(
-    take(1),
-    takeUntilDestroyed(this.destroyRef),
-  );
-  saved$.subscribe(success => { if (success) this.displayDialog(); });
+  // Subscribe BEFORE triggering the save so neither the start nor the end can be missed
+  const dialogSub = this.workflowValidationService.workflowSaveIsProcessing
+    .pipe(
+      distinctUntilChanged(),
+      skipWhile(isProcessing => !isProcessing), // wait for the save to START (true)
+      filter(isProcessing => !isProcessing),    // then for it to FINISH (false)
+      take(1),
+      takeUntilDestroyed(this.destroyRef),
+    )
+    .subscribe(() => this.displayDialog());
 
-  if (!this.saveForm()) {
-    this.displayDialog(); // nothing to save in this state
+  const saveTriggered = this.saveForm();
+  this.checkWorkflowErrors(); // after saveForm: saveForm clears all alerts
+
+  if (!saveTriggered) {
+    dialogSub.unsubscribe(); // nothing to save in this state -> open right away
+    this.displayDialog();
   }
   break;
-}
-
-
-
-saveForm(): boolean {
-  this.alertsBoxService.clearAllAlerts();
-  this.applyCounterpartyDefaultRestriction();
-  let saveTriggered = false;
-  if (this.isWorkflowTypeBothRatingAndFacility) { this.saveGroupedRating(); saveTriggered = true; }
-  // ... same for each branch that calls a trigger
-  return saveTriggered;
-}
-
-private workflowSaveResultSubject = new Subject<boolean>(); // true = saved, false = error
-workflowSaveResult$ = this.workflowSaveResultSubject.asObservable();
-
-notifyWorkflowSaved(success: boolean): void {
-  this.workflowSaveResultSubject.next(success);
 }
