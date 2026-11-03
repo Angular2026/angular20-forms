@@ -1,25 +1,23 @@
-case 'DISPLAY_DIALOG': {
-  // Subscribe BEFORE triggering the save so neither the start nor the end can be missed
-  const dialogSub = this.workflowValidationService.workflowSaveIsProcessing
-    .pipe(
-      distinctUntilChanged(),
-      skipWhile(isProcessing => !isProcessing), // wait for the save to START (true)
-      filter(isProcessing => !isProcessing),    // then for it to FINISH (false)
-      take(1),
-      takeUntilDestroyed(this.destroyRef),
-    )
-    .subscribe(() => this.displayDialog());
+private readonly defaultSavedSubject = new Subject<void>();
+readonly defaultSaved$ = this.defaultSavedSubject.asObservable();
 
-  const saveTriggered = this.saveForm();
-  this.checkWorkflowErrors(); // after saveForm: saveForm clears all alerts
-
-  if (!saveTriggered) {
-    dialogSub.unsubscribe(); // nothing to save in this state -> open right away
-    this.displayDialog();
-  }
-  break;
+notifyDefaultSaved(): void {
+  this.defaultSavedSubject.next();
 }
 
-this.workflowValidationService.workflowSaveIsProcessing
-  .pipe(take(4))
-  .subscribe(v => console.log('[SAVE] processing', v));
+
+this.workflowValidationService.startWorkflowSavingProcess();
+const dataToPersist = this.mapFormToDefaultingClientSaveRequest();
+this.defaultCounterPartyService
+  .persistDefaultingClient(dataToPersist)
+  .pipe(finalize(() => this.workflowValidationService.endWorkflowSavingProcess()))
+  .subscribe(() => {
+    this.alertsBoxService.setSectionValid('defaultCounterparty');
+    this.defaultCounterPartyService.notifyDefaultSaved();
+  });
+
+
+
+this.defaultCounterPartyService.defaultSaved$
+  .pipe(takeUntilDestroyed(this.destroyRef))
+  .subscribe(() => this.persistData());
