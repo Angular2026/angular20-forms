@@ -21,3 +21,18 @@ this.defaultCounterPartyService
 this.defaultCounterPartyService.defaultSaved$
   .pipe(takeUntilDestroyed(this.destroyRef))
   .subscribe(() => this.persistData());
+
+
+this.workflowValidationService.startWorkflowSavingProcess();
+const dataToPersist = this.mapFormToDefaultingClientSaveRequest();
+timer(5_000) // ⚠️ TEST ONLY – à retirer
+  .pipe(
+    switchMap(() => this.defaultCounterPartyService.persistDefaultingClient(dataToPersist)),
+    finalize(() => this.workflowValidationService.endWorkflowSavingProcess())
+  )
+  .subscribe(() => {
+    this.alertsBoxService.setSectionValid('defaultCounterparty');
+    this.defaultCounterPartyService.notifyDefaultSaved();
+  });
+
+
