@@ -1,70 +1,40 @@
-export enum GrrRatingPolicy {
-  LGD_LARGE_CORPORATES = 'LGD Large Corporates',
-  LGD_ASSET_FINANCE = 'LGD Asset Finance',
-  LGD_PROJECT_FINANCE = 'LGD Project Finance',
-  GLOBAL_NON_RETAIL_RATING = 'GLOBAL NON RETAIL RATING POLICY',
-}
-
-export const DEFAULT_GRR_POLICY_BY_MODEL: Partial<Record<RatingModelCode, GrrRatingPolicy>> = {
-  [RatingModelCode.PD_LARGE_CORPORATE]: GrrRatingPolicy.LGD_LARGE_CORPORATES,
-  [RatingModelCode.PD_ASSET_FINANCE]: GrrRatingPolicy.LGD_ASSET_FINANCE,
-  [RatingModelCode.PD_PROJECT_FINANCE]: GrrRatingPolicy.LGD_PROJECT_FINANCE,
-  [RatingModelCode.GLOBAL_NON_RETAIL_RATING]: GrrRatingPolicy.GLOBAL_NON_RETAIL_RATING,
-};
-
-private applyPdLargeCorpBorrowerRules(): void {
+private listenGrrPolicyOverride(): void {
   const b = this.facilityGrrForm().get('borrower');
-  b.get('obligorType').setValidators(null);
-  b.get('obligorType').setValue(null);
-  b.get('isHoldingSubordinate').setValidators(Validators.required);
-  this.loadLboFlag();
-  this.displayErrorMessage();
+  b.get('overideGrrRatingPolicy').valueChanges.pipe(
+    map(override => getRatingModelFromGrrPolicy(override ?? b.get('grrRatingPolicy').value)),
+    distinctUntilChanged(),
+    takeUntilDestroyed(this.destroyRef),
+  ).subscribe(model => this.applyOverrideModel(model));
 }
 
-// Map inverse déduite : plus besoin de GRR_POLICY_TO_RATING_MODEL écrit à la main
-const GRR_POLICY_TO_RATING_MODEL: Record<string, RatingModelCode> = Object.fromEntries(
-  Object.entries(DEFAULT_GRR_POLICY_BY_MODEL).map(([model, policy]) => [policy!.toUpperCase(), model as private applyPdLargeCorpBorrowerRules(): void {
-  const b = this.facilityGrrForm().get('borrower');
-  b.get('obligorType').setValidators(null);
-  b.get('obligorType').setValue(null);
-  b.get('isHoldingSubordinate').setValidators(Validators.required);
-  this.loadLboFlag();
-  this.displayErrorMessage();
-}
-
-
-
-export const getRatingModelFromGrrPolicy = (policy?: string | null): RatingModelCode | null =>
-  policy ? GRR_POLICY_TO_RATING_MODEL[policy.trim().toUpperCase()] ?? null : null;
-
-private setModel(model: RatingModelCode): void {
-  this.modelUsed = RatingModelDescription[model];
-  this.specificRatingPolicy = RatingModelDescription[model];
-  this.defaultGrrRatingPolicy = DEFAULT_GRR_POLICY_BY_MODEL[model] ?? '';
-  this.facilityGrrForm().get('borrower.grrRatingPolicy')?.patchValue(this.defaultGrrRatingPolicy);
-}
-
-if (this.isPgnnr()) {
-  this.setModel(RatingModelCode.GLOBAL_NON_RETAIL_RATING);
-  this.applyPgnnrBorrowerRules();
-} else if (this.isProjectFinance()) {
-  this.clearPgnnrRules();
-  this.setModel(RatingModelCode.PD_PROJECT_FINANCE);
-  this.applyProjectFinanceBorrowerRules();
-} else {
-  this.clearPgnnrRules();
-  this.setModel(RatingModelCode.PD_LARGE_CORPORATE);
-  // ... obligorType, isHoldingSubordinate, loadLboFlag, displayErrorMessage
+private applyOverrideModel(model: RatingModelCode | null): void {
+  if (!model) return;
+  this.modelUsed = RatingModelDescription[model]; // no setModel(): SRP and default policy stay unchanged
+  switch (model) {
+    case RatingModelCode.GLOBAL_NON_RETAIL_RATING:
+      this.applyPgnnrBorrowerRules();
+      break;
+    case RatingModelCode.PD_PROJECT_FINANCE:
+      this.clearPgnnrRules();
+      this.applyProjectFinanceBorrowerRules(); // ⚠️ see note below
+      break;
+    case RatingModelCode.PD_ASSET_FINANCE:
+      this.clearPgnnrRules();
+      break;
+    default:
+      this.clearPgnnrRules();
+      this.applyPdLargeCorpBorrowerRules();
+  }
 }
 
 
-protected readonly RatingModelCode = RatingModelCode;
-protected readonly RatingModelDescription = RatingModelDescription;
-
-get isPdLargeCorpModel()     { return this.modelUsed === RatingModelDescription[RatingModelCode.PD_LARGE_CORPORATE]; }
-get isAssetFinanceModel()    { return this.modelUsed === RatingModelDescription[RatingModelCode.PD_ASSET_FINANCE]; }
-get isProjectFinanceModel()  { return this.modelUsed === RatingModelDescription[RatingModelCode.PD_PROJECT_FINANCE]; }
-get isPgnnrModel()           { return this.modelUsed === RatingModelDescription[RatingModelCode.GLOBAL_NON_RETAIL_RATING]; }
-
-
-
+this.getModelUsed();
+this.listenGrrPolicyOverride();
+if (!this.isPgnnrModel) {
+  this.fetchSalesForRmpmId(this.rmpmId());
+  this.loadCurrentRatingApproved(this.rmpmId());
+}
+// ...
+if (!this.isPgnnrModel) {
+  this.facilitiesService.getSugrrDriverRatingArchivedData(...).subscribe(...);
+}
