@@ -1,40 +1,32 @@
-private listenGrrPolicyOverride(): void {
-  const b = this.facilityGrrForm().get('borrower');
-  b.get('overideGrrRatingPolicy').valueChanges.pipe(
-    map(override => getRatingModelFromGrrPolicy(override ?? b.get('grrRatingPolicy').value)),
-    distinctUntilChanged(),
-    takeUntilDestroyed(this.destroyRef),
-  ).subscribe(model => this.applyOverrideModel(model));
-}
+private applyProjectFinanceBorrowerRules(lockOverride = true): void {
+  if (lockOverride) {
+    // PF coming from the SRP: override not allowed → clear and lock
+    const overrideCtrl = this.facilityGrrForm().get('borrower.overideGrrRatingPolicy');
+    overrideCtrl?.reset(null, { emitEvent: false });
+    overrideCtrl?.disable({ emitEvent: false });
 
-private applyOverrideModel(model: RatingModelCode | null): void {
-  if (!model) return;
-  this.modelUsed = RatingModelDescription[model]; // no setModel(): SRP and default policy stay unchanged
-  switch (model) {
-    case RatingModelCode.GLOBAL_NON_RETAIL_RATING:
-      this.applyPgnnrBorrowerRules();
-      break;
-    case RatingModelCode.PD_PROJECT_FINANCE:
-      this.clearPgnnrRules();
-      this.applyProjectFinanceBorrowerRules(); // ⚠️ see note below
-      break;
-    case RatingModelCode.PD_ASSET_FINANCE:
-      this.clearPgnnrRules();
-      break;
-    default:
-      this.clearPgnnrRules();
-      this.applyPdLargeCorpBorrowerRules();
+    const commentCtrl = this.facilityGrrForm().get('borrower.comment');
+    commentCtrl?.reset(null, { emitEvent: false });
+    commentCtrl?.clearValidators();
+    commentCtrl?.updateValueAndValidity({ emitEvent: false });
   }
+
+  // Common to both cases: PD LC fields are not used in PF
+  this.nonPfBorrowerFields.forEach(name => {
+    const ctrl = this.facilityGrrForm().get(`borrower.${name}`);
+    ctrl?.clearValidators();
+    ctrl?.reset(null, { emitEvent: false });
+    ctrl?.updateValueAndValidity({ emitEvent: false });
+  });
+}
+
+/** Re-enables the override dropdown (it may have been locked by a PF load) */
+private unlockGrrOverride(): void {
+  this.facilityGrrForm().get('borrower.overideGrrRatingPolicy')?.enable({ emitEvent: false });
 }
 
 
-this.getModelUsed();
-this.listenGrrPolicyOverride();
-if (!this.isPgnnrModel) {
-  this.fetchSalesForRmpmId(this.rmpmId());
-  this.loadCurrentRatingApproved(this.rmpmId());
-}
-// ...
-if (!this.isPgnnrModel) {
-  this.facilitiesService.getSugrrDriverRatingArchivedData(...).subscribe(...);
-}
+case RatingModelCode.PD_PROJECT_FINANCE:
+  this.clearPgnnrRules();
+  this.applyProjectFinanceBorrowerRules(false);   // keeps the user's choice
+  break;
