@@ -1,45 +1,21 @@
-const GRR_POLICY_TO_RATING_MODEL: Record<string, RatingModelCode> = {
-  'LGD LARGE CORPORATES': RatingModelCode.PD_LARGE_CORPORATE,
-  'LGD ASSET FINANCE': RatingModelCode.PD_ASSET_FINANCE,
-  'LGD PROJECT FINANCE': RatingModelCode.PD_PROJECT_FINANCE,
-  'GLOBAL NON RETAIL RATING POLICY': RatingModelCode.GLOBAL_NON_RETAIL_RATING,
+export enum GrrRatingPolicy {
+  LGD_LARGE_CORPORATES = 'LGD Large Corporates',
+  LGD_ASSET_FINANCE = 'LGD Asset Finance',
+  LGD_PROJECT_FINANCE = 'LGD Project Finance',
+  GLOBAL_NON_RETAIL_RATING = 'GLOBAL NON RETAIL RATING POLICY',
+}
+
+export const DEFAULT_GRR_POLICY_BY_MODEL: Partial<Record<RatingModelCode, GrrRatingPolicy>> = {
+  [RatingModelCode.PD_LARGE_CORPORATE]: GrrRatingPolicy.LGD_LARGE_CORPORATES,
+  [RatingModelCode.PD_ASSET_FINANCE]: GrrRatingPolicy.LGD_ASSET_FINANCE,
+  [RatingModelCode.PD_PROJECT_FINANCE]: GrrRatingPolicy.LGD_PROJECT_FINANCE,
+  [RatingModelCode.GLOBAL_NON_RETAIL_RATING]: GrrRatingPolicy.GLOBAL_NON_RETAIL_RATING,
 };
 
-export function getRatingModelFromGrrPolicy(policy?: string | null): RatingModelCode | null {
-  if (!policy) return null;
-  return GRR_POLICY_TO_RATING_MODEL[policy.trim().toUpperCase()] ?? null;
-}
+// Map inverse déduite : plus besoin de GRR_POLICY_TO_RATING_MODEL écrit à la main
+const GRR_POLICY_TO_RATING_MODEL: Record<string, RatingModelCode> = Object.fromEntries(
+  Object.entries(DEFAULT_GRR_POLICY_BY_MODEL).map(([model, policy]) => [policy!.toUpperCase(), model as RatingModelCode]),
+);
 
-export function getRatingDescriptionFromGrrPolicy(policy?: string | null): string | null {
-  const code = getRatingModelFromGrrPolicy(policy);
-  return code ? RatingModelDescription[code] : null;
-}
-
-
-private listenGrrPolicyChanges(): void {
-  const b = this.facilityGrrForm().get('borrower');
-  const effectivePolicy = () =>
-    b.get('overideGrrRatingPolicy').value || b.get('grrRatingPolicy').value;
-
-  merge(
-    b.get('grrRatingPolicy').valueChanges,
-    b.get('overideGrrRatingPolicy').valueChanges,
-  ).pipe(
-    startWith(null),
-    map(() => getRatingModelFromGrrPolicy(effectivePolicy())),
-    distinctUntilChanged(),
-    takeUntilDestroyed(this.destroyRef),
-  ).subscribe(code => this.applyRatingModel(code));
-}
-
-
-
-private applyRatingModel(code: RatingModelCode | null): void {
-  switch (code) {
-    case RatingModelCode.GLOBAL_NON_RETAIL_RATING: /* branche PGNNR */ break;
-    case RatingModelCode.PD_PROJECT_FINANCE:       /* branche PF */    break;
-    case RatingModelCode.PD_ASSET_FINANCE:         /* branche AF */    break;
-    default:                                       /* branche PD LC */ break;
-  }
-}
-
+export const getRatingModelFromGrrPolicy = (policy?: string | null): RatingModelCode | null =>
+  policy ? GRR_POLICY_TO_RATING_MODEL[policy.trim().toUpperCase()] ?? null : null;
