@@ -19,3 +19,26 @@ const GRR_POLICY_TO_RATING_MODEL: Record<string, RatingModelCode> = Object.fromE
 
 export const getRatingModelFromGrrPolicy = (policy?: string | null): RatingModelCode | null =>
   policy ? GRR_POLICY_TO_RATING_MODEL[policy.trim().toUpperCase()] ?? null : null;
+
+private setModel(model: RatingModelCode): void {
+  this.modelUsed = RatingModelDescription[model];
+  this.specificRatingPolicy = RatingModelDescription[model];
+  this.defaultGrrRatingPolicy = DEFAULT_GRR_POLICY_BY_MODEL[model] ?? '';
+  this.facilityGrrForm().get('borrower.grrRatingPolicy')?.patchValue(this.defaultGrrRatingPolicy);
+}
+
+if (this.isPgnnr()) {
+  this.setModel(RatingModelCode.GLOBAL_NON_RETAIL_RATING);
+  this.applyPgnnrBorrowerRules();
+} else if (this.isProjectFinance()) {
+  this.clearPgnnrRules();
+  this.setModel(RatingModelCode.PD_PROJECT_FINANCE);
+  this.applyProjectFinanceBorrowerRules();
+} else {
+  this.clearPgnnrRules();
+  this.setModel(RatingModelCode.PD_LARGE_CORPORATE);
+  // ... obligorType, isHoldingSubordinate, loadLboFlag, displayErrorMessage
+}
+
+
+
