@@ -1,32 +1,18 @@
-private applyProjectFinanceBorrowerRules(lockOverride = true): void {
-  if (lockOverride) {
-    // PF coming from the SRP: override not allowed → clear and lock
-    const overrideCtrl = this.facilityGrrForm().get('borrower.overideGrrRatingPolicy');
-    overrideCtrl?.reset(null, { emitEvent: false });
-    overrideCtrl?.disable({ emitEvent: false });
+/** Édition d'une facility : restaure la GRR policy enregistrée en base */
+private restoreSavedGrrPolicy(): void {
+  const saved = this.selectedFacilityItem()?.facilityBorrower?.counterpartyRatingPolicy;
+  if (!saved) return;
 
-    const commentCtrl = this.facilityGrrForm().get('borrower.comment');
-    commentCtrl?.reset(null, { emitEvent: false });
-    commentCtrl?.clearValidators();
-    commentCtrl?.updateValueAndValidity({ emitEvent: false });
-  }
+  // Si c'est la policy par défaut, ce n'est pas un override
+  if (saved.toUpperCase() === this.defaultGrrRatingPolicy?.toUpperCase()) return;
 
-  // Common to both cases: PD LC fields are not used in PF
-  this.nonPfBorrowerFields.forEach(name => {
-    const ctrl = this.facilityGrrForm().get(`borrower.${name}`);
-    ctrl?.clearValidators();
-    ctrl?.reset(null, { emitEvent: false });
-    ctrl?.updateValueAndValidity({ emitEvent: false });
-  });
+  // Récupère la value exacte de la liste, pour que le select l'affiche (casse identique)
+  const option = this.ratingPoliciesList.find(o => o.value?.toUpperCase() === saved.toUpperCase());
+
+  // Déclenche valueChanges → listenGrrPolicyOverride → applyOverrideModel → modelUsed à jour
+  this.facilityGrrForm().get('borrower.overideGrrRatingPolicy')?.patchValue(option?.value ?? saved);
 }
 
-/** Re-enables the override dropdown (it may have been locked by a PF load) */
-private unlockGrrOverride(): void {
-  this.facilityGrrForm().get('borrower.overideGrrRatingPolicy')?.enable({ emitEvent: false });
+if (changes['selectedFacilityItem']?.currentValue && !changes['selectedFacilityItem'].firstChange) {
+  this.restoreSavedGrrPolicy();
 }
-
-
-case RatingModelCode.PD_PROJECT_FINANCE:
-  this.clearPgnnrRules();
-  this.applyProjectFinanceBorrowerRules(false);   // keeps the user's choice
-  break;
