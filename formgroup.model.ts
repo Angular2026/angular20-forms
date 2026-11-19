@@ -12,6 +12,15 @@ export const DEFAULT_GRR_POLICY_BY_MODEL: Partial<Record<RatingModelCode, GrrRat
   [RatingModelCode.GLOBAL_NON_RETAIL_RATING]: GrrRatingPolicy.GLOBAL_NON_RETAIL_RATING,
 };
 
+private applyPdLargeCorpBorrowerRules(): void {
+  const b = this.facilityGrrForm().get('borrower');
+  b.get('obligorType').setValidators(null);
+  b.get('obligorType').setValue(null);
+  b.get('isHoldingSubordinate').setValidators(Validators.required);
+  this.loadLboFlag();
+  this.displayErrorMessage();
+}
+
 // Map inverse déduite : plus besoin de GRR_POLICY_TO_RATING_MODEL écrit à la main
 const GRR_POLICY_TO_RATING_MODEL: Record<string, RatingModelCode> = Object.fromEntries(
   Object.entries(DEFAULT_GRR_POLICY_BY_MODEL).map(([model, policy]) => [policy!.toUpperCase(), model as private applyPdLargeCorpBorrowerRules(): void {
