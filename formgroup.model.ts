@@ -41,4 +41,13 @@ if (this.isPgnnr()) {
 }
 
 
+protected readonly RatingModelCode = RatingModelCode;
+protected readonly RatingModelDescription = RatingModelDescription;
+
+get isPdLargeCorpModel()     { return this.modelUsed === RatingModelDescription[RatingModelCode.PD_LARGE_CORPORATE]; }
+get isAssetFinanceModel()    { return this.modelUsed === RatingModelDescription[RatingModelCode.PD_ASSET_FINANCE]; }
+get isProjectFinanceModel()  { return this.modelUsed === RatingModelDescription[RatingModelCode.PD_PROJECT_FINANCE]; }
+get isPgnnrModel()           { return this.modelUsed === RatingModelDescription[RatingModelCode.GLOBAL_NON_RETAIL_RATING]; }
+
+
 
